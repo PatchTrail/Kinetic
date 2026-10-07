@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:kinetic/services/media_service.dart';
 import 'package:kinetic/widgets/floating_music_capsule.dart';
+import 'package:kinetic/theme/app_theme.dart';
 
 void main() {
   setUp(() {
@@ -61,5 +62,38 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(MediaService.instance.currentTrackNotifier.value, isNull);
+  });
+
+  testWidgets('FloatingMusicCapsule dynamically updates styling when theme changes', (tester) async {
+    KineticTheme.setThemeMode(ThemeMode.light);
+    KineticTheme.updateActiveBrightness(false);
+
+    MediaService.instance.currentTrackNotifier.value = const MediaTrackInfo(
+      title: 'Stronger',
+      artist: 'Kanye West',
+      isPlaying: true,
+    );
+
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: FloatingMusicCapsule(),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(find.text('Stronger'), findsOneWidget);
+
+    // Switch to Dark mode
+    KineticTheme.setThemeMode(ThemeMode.dark);
+    KineticTheme.updateActiveBrightness(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('Stronger'), findsOneWidget);
   });
 }

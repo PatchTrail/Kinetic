@@ -1029,7 +1029,7 @@ class _ActiveWorkoutScreenState extends State<ActiveWorkoutScreen> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       // 1. Floating Music Capsule (Only renders if active audio is playing)
-                      const FloatingMusicCapsule(),
+                      FloatingMusicCapsule(key: ValueKey('capsule_workout_${KineticTheme.isDarkMode ? "dark" : "light"}')),
 
                       // 2. Active Rest Countdown Banner
                       if (_restSecondsRemaining > 0)

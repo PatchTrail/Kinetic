@@ -148,7 +148,7 @@ class _MainShellState extends State<MainShell> {
                       alignment: Alignment.bottomCenter,
                       child: Padding(
                         padding: const EdgeInsets.only(bottom: 84),
-                        child: const FloatingMusicCapsule(),
+                        child: FloatingMusicCapsule(key: ValueKey('capsule_$themeKey')),
                       ),
                     ),
 
