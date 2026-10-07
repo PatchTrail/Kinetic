@@ -41,11 +41,12 @@ class MediaService {
   final ValueNotifier<MediaTrackInfo?> currentTrackNotifier = ValueNotifier<MediaTrackInfo?>(null);
   Timer? _pollTimer;
   String? _activeMprisBus;
+  String? _dismissedTrackKey;
 
   void startListening() {
     _checkMpris();
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       _checkMpris();
     });
   }
@@ -72,48 +73,69 @@ class MediaService {
 
       final output = res.stdout.toString();
       final lines = output.split('\n');
-      String? playerBus;
+      final playerBuses = <String>[];
 
       for (final line in lines) {
         if (line.contains('org.mpris.MediaPlayer2.')) {
           final match = RegExp(r'"(org\.mpris\.MediaPlayer2\.[^"]+)"').firstMatch(line);
           if (match != null) {
-            playerBus = match.group(1);
-            break;
+            playerBuses.add(match.group(1)!);
           }
         }
       }
 
-      if (playerBus == null) {
-        // No native MPRIS player running right now.
-        // If we previously had one, set to null
-        if (_activeMprisBus != null) {
+      if (playerBuses.isEmpty) {
+        if (_activeMprisBus != null || currentTrackNotifier.value != null) {
           _activeMprisBus = null;
+          _dismissedTrackKey = null;
           currentTrackNotifier.value = null;
         }
         return;
       }
 
-      _activeMprisBus = playerBus;
+      String? activePlayingBus;
+      String? fallbackPausedBus;
+      bool isPlaying = false;
 
-      // Query PlaybackStatus
-      final statusRes = await Process.run('dbus-send', [
-        '--session',
-        '--dest=$playerBus',
-        '--type=method_call',
-        '--print-reply',
-        '/org/mpris/MediaPlayer2',
-        'org.freedesktop.DBus.Properties.Get',
-        'string:org.mpris.MediaPlayer2.Player',
-        'string:PlaybackStatus',
-      ]);
+      for (final bus in playerBuses) {
+        final statusRes = await Process.run('dbus-send', [
+          '--session',
+          '--dest=$bus',
+          '--type=method_call',
+          '--print-reply',
+          '/org/mpris/MediaPlayer2',
+          'org.freedesktop.DBus.Properties.Get',
+          'string:org.mpris.MediaPlayer2.Player',
+          'string:PlaybackStatus',
+        ]);
+        if (statusRes.exitCode == 0) {
+          final out = statusRes.stdout.toString();
+          if (out.contains('"Playing"')) {
+            activePlayingBus = bus;
+            isPlaying = true;
+            break;
+          } else if (fallbackPausedBus == null && out.contains('"Paused"')) {
+            fallbackPausedBus = bus;
+          }
+        }
+      }
 
-      final isPlaying = statusRes.stdout.toString().contains('"Playing"');
+      final chosenBus = activePlayingBus ?? fallbackPausedBus;
+      if (chosenBus == null) {
+        if (_activeMprisBus != null || currentTrackNotifier.value != null) {
+          _activeMprisBus = null;
+          _dismissedTrackKey = null;
+          currentTrackNotifier.value = null;
+        }
+        return;
+      }
+
+      _activeMprisBus = chosenBus;
 
       // Query Metadata
       final metaRes = await Process.run('dbus-send', [
         '--session',
-        '--dest=$playerBus',
+        '--dest=$chosenBus',
         '--type=method_call',
         '--print-reply',
         '/org/mpris/MediaPlayer2',
@@ -122,32 +144,64 @@ class MediaService {
         'string:Metadata',
       ]);
 
+      if (metaRes.exitCode != 0) return;
       final metaOutput = metaRes.stdout.toString();
 
-      String title = 'Unknown Track';
+      String title = '';
       final titleMatch = RegExp(r'string\s+"xesam:title"\s+variant\s+string\s+"([^"]+)"').firstMatch(metaOutput);
       if (titleMatch != null) {
-        title = titleMatch.group(1) ?? title;
+        title = titleMatch.group(1)?.trim() ?? '';
       }
 
-      String artist = 'Unknown Artist';
+      String artist = '';
       final artistMatch = RegExp(r'string\s+"xesam:artist"\s+variant\s+array\s+\[\s+string\s+"([^"]+)"').firstMatch(metaOutput);
       if (artistMatch != null) {
-        artist = artistMatch.group(1) ?? artist;
+        artist = artistMatch.group(1)?.trim() ?? '';
       }
 
       String album = '';
       final albumMatch = RegExp(r'string\s+"xesam:album"\s+variant\s+string\s+"([^"]+)"').firstMatch(metaOutput);
       if (albumMatch != null) {
-        album = albumMatch.group(1) ?? '';
+        album = albumMatch.group(1)?.trim() ?? '';
       }
 
-      currentTrackNotifier.value = MediaTrackInfo(
-        title: title,
-        artist: artist,
-        album: album,
-        isPlaying: isPlaying,
-      );
+      String? artUrl;
+      final artMatch = RegExp(r'string\s+"mpris:artUrl"\s+variant\s+string\s+"([^"]+)"').firstMatch(metaOutput);
+      if (artMatch != null) {
+        artUrl = artMatch.group(1)?.trim();
+      }
+
+      if (title.isEmpty) {
+        if (currentTrackNotifier.value != null) {
+          currentTrackNotifier.value = null;
+        }
+        return;
+      }
+
+      final trackKey = '${title}_$artist';
+      if (_dismissedTrackKey != null) {
+        if (_dismissedTrackKey == trackKey) {
+          // User explicitly dismissed this track; do not re-open unless song changes
+          return;
+        } else {
+          _dismissedTrackKey = null;
+        }
+      }
+
+      final prev = currentTrackNotifier.value;
+      if (prev == null ||
+          prev.title != title ||
+          prev.artist != artist ||
+          prev.isPlaying != isPlaying ||
+          prev.artUrl != artUrl) {
+        currentTrackNotifier.value = MediaTrackInfo(
+          title: title,
+          artist: artist,
+          album: album,
+          isPlaying: isPlaying,
+          artUrl: artUrl,
+        );
+      }
     } catch (_) {
       // D-bus call or parsing error
     }
@@ -209,6 +263,10 @@ class MediaService {
   }
 
   void clearTrack() {
+    final curr = currentTrackNotifier.value;
+    if (curr != null) {
+      _dismissedTrackKey = '${curr.title}_${curr.artist}';
+    }
     currentTrackNotifier.value = null;
   }
 }

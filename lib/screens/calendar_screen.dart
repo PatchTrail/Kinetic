@@ -27,11 +27,13 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
       vsync: this,
       duration: const Duration(milliseconds: 1800),
     )..repeat();
+    DatabaseService.dataChangeNotifier.addListener(_loadCalendarData);
     _loadCalendarData();
   }
 
   @override
   void dispose() {
+    DatabaseService.dataChangeNotifier.removeListener(_loadCalendarData);
     _pulseController.dispose();
     super.dispose();
   }

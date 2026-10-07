@@ -42,7 +42,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    DatabaseService.dataChangeNotifier.addListener(_loadDashboardData);
     _loadDashboardData();
+  }
+
+  @override
+  void dispose() {
+    DatabaseService.dataChangeNotifier.removeListener(_loadDashboardData);
+    super.dispose();
   }
 
   Future<void> _loadDashboardData() async {

@@ -35,19 +35,27 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    DatabaseService.dataChangeNotifier.addListener(_onDataChanged);
+    _loadData(showSpinner: true);
+  }
+
+  void _onDataChanged() {
+    if (mounted) {
+      _loadData(showSpinner: false);
+    }
   }
 
   @override
   void dispose() {
+    DatabaseService.dataChangeNotifier.removeListener(_onDataChanged);
     _searchController.dispose();
     super.dispose();
   }
 
   String get _dateString => DateFormat('yyyy-MM-dd').format(_selectedDate);
 
-  Future<void> _loadData() async {
-    setState(() => _isLoading = true);
+  Future<void> _loadData({bool showSpinner = false}) async {
+    if (showSpinner) setState(() => _isLoading = true);
     final profile = await DatabaseService.instance.getUserProfile();
     final entries = await DatabaseService.instance.getFoodEntriesForDate(_dateString);
     if (!mounted) return;
@@ -692,102 +700,134 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
                   )
                 else
                   ..._foodEntries.map((entry) {
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 10),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceDark,
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: AppTheme.cardBorder),
+                    return Dismissible(
+                      key: ValueKey('food_entry_${entry.id}'),
+                      direction: DismissDirection.endToStart,
+                      background: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        alignment: Alignment.centerRight,
+                        decoration: BoxDecoration(
+                          color: Colors.redAccent.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.redAccent.withValues(alpha: 0.5)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Text(
+                              'PURGE',
+                              style: TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w900,
+                                fontFamily: 'monospace',
+                                letterSpacing: 1.0,
+                              ),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.delete_forever_rounded, color: Colors.redAccent, size: 20),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 3,
-                            height: 36,
-                            color: AppTheme.accentOrange,
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      onDismissed: (_) => _deleteEntry(entry.id),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.surfaceDark,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: AppTheme.cardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 3,
+                              height: 36,
+                              color: AppTheme.accentOrange,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.cardBackground,
+                                          borderRadius: BorderRadius.circular(2),
+                                        ),
+                                        child: Text(
+                                          entry.mealType.toUpperCase(),
+                                          style: const TextStyle(
+                                            color: AppTheme.accentOrange,
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w800,
+                                            fontFamily: 'monospace',
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          entry.foodName,
+                                          style: TextStyle(
+                                            color: KineticTheme.textPrimary,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text(
+                                    'P: ${entry.proteinG.toStringAsFixed(1)}g  ·  C: ${entry.carbsG.toStringAsFixed(1)}g  ·  F: ${entry.fatG.toStringAsFixed(1)}g',
+                                    style: TextStyle(
+                                      color: AppTheme.textMuted,
+                                      fontSize: 11,
+                                      fontFamily: 'monospace',
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.cardBackground,
-                                        borderRadius: BorderRadius.circular(2),
-                                      ),
-                                      child: Text(
-                                        entry.mealType.toUpperCase(),
-                                        style: const TextStyle(
-                                          color: AppTheme.accentOrange,
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w800,
-                                          fontFamily: 'monospace',
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        entry.foodName,
-                                        style: TextStyle(
-                                          color: KineticTheme.textPrimary,
-                                          fontSize: 13,
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
                                 Text(
-                                  'P: ${entry.proteinG.toStringAsFixed(1)}g  ·  C: ${entry.carbsG.toStringAsFixed(1)}g  ·  F: ${entry.fatG.toStringAsFixed(1)}g',
+                                  '${entry.calories}',
+                                  style: TextStyle(
+                                    color: KineticTheme.textPrimary,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w900,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                                Text(
+                                  'KCAL',
                                   style: TextStyle(
                                     color: AppTheme.textMuted,
-                                    fontSize: 11,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
                                     fontFamily: 'monospace',
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                '${entry.calories}',
-                                style: TextStyle(
-                                  color: KineticTheme.textPrimary,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                              Text(
-                                'KCAL',
-                                style: TextStyle(
-                                  color: AppTheme.textMuted,
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  fontFamily: 'monospace',
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 8),
-                          IconButton(
-                            icon: Icon(Icons.delete_outline, size: 18, color: AppTheme.textMuted),
-                            onPressed: () => _deleteEntry(entry.id),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: Icon(Icons.delete_outline, size: 18, color: AppTheme.textMuted),
+                              onPressed: () => _deleteEntry(entry.id),
+                            ),
+                          ],
+                        ),
                       ),
                     );
-                  }).toList(),
+                  }),
 
                 const SizedBox(height: 30),
               ],

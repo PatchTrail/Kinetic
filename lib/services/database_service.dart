@@ -18,6 +18,14 @@ class DatabaseService {
   static final DatabaseService instance = DatabaseService._internal();
   DatabaseService._internal();
 
+  /// Global notifier that emits an increment whenever database rows are modified.
+  static final ValueNotifier<int> dataChangeNotifier = ValueNotifier<int>(0);
+
+  /// Call whenever data is inserted, updated, deleted, or purged.
+  static void notifyDataChanged() {
+    dataChangeNotifier.value++;
+  }
+
   Database? _db;
 
   Future<Database> get database async {
@@ -356,6 +364,7 @@ class DatabaseService {
     await db.delete('food_logs');
     await db.delete('custom_routines');
     await db.delete('reminders');
+    notifyDataChanged();
   }
 
   // --- QUERY ALL HELPERS FOR BACKUP / EXPORT ---
@@ -375,31 +384,37 @@ class DatabaseService {
   Future<void> upsertWorkout(Workout workout) async {
     final db = await database;
     await db.insert('workouts', workout.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> upsertWorkoutSet(WorkoutSet set) async {
     final db = await database;
     await db.insert('workout_sets', set.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> upsertBodyweightEntry(BodyweightEntry entry) async {
     final db = await database;
     await db.insert('bodyweight_logs', entry.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> upsertFoodEntry(FoodEntry entry) async {
     final db = await database;
     await db.insert('food_logs', entry.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> upsertCustomRoutine(RoutinePlan plan) async {
     final db = await database;
     await db.insert('custom_routines', plan.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> upsertDailyRoutineItem(DailyRoutineItem item) async {
     final db = await database;
     await db.insert('daily_routines', item.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   // --- ANATOMICAL & VOLUME TELEMETRY ---
@@ -586,12 +601,14 @@ class DatabaseService {
   Future<void> saveWorkout(Workout workout) async {
     final db = await database;
     await db.insert('workouts', workout.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> deleteWorkout(String workoutId) async {
     final db = await database;
     await db.delete('workout_sets', where: 'workout_id = ?', whereArgs: [workoutId]);
     await db.delete('workouts', where: 'id = ?', whereArgs: [workoutId]);
+    notifyDataChanged();
   }
 
   Future<Map<String, dynamic>?> getVolumeComparisonDelta() async {
@@ -672,11 +689,13 @@ class DatabaseService {
   Future<void> saveSet(WorkoutSet set) async {
     final db = await database;
     await db.insert('workout_sets', set.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> deleteSet(String setId) async {
     final db = await database;
     await db.delete('workout_sets', where: 'id = ?', whereArgs: [setId]);
+    notifyDataChanged();
   }
 
   Future<List<DailyRoutineItem>> getRoutineItemsForDate(String dateString) async {
@@ -698,11 +717,13 @@ class DatabaseService {
       where: 'id = ?',
       whereArgs: [id],
     );
+    notifyDataChanged();
   }
 
   Future<void> addRoutineItem(DailyRoutineItem item) async {
     final db = await database;
     await db.insert('daily_routines', item.toMap());
+    notifyDataChanged();
   }
 
   Future<List<BodyweightEntry>> getBodyweightEntries() async {
@@ -720,6 +741,7 @@ class DatabaseService {
       notes: notes,
     );
     await db.insert('bodyweight_logs', entry.toMap());
+    notifyDataChanged();
   }
 
   // --- STATS & AGGREGATIONS ---
@@ -889,6 +911,7 @@ class DatabaseService {
     await db.insert('user_profile', profile.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
     // Also record initial bodyweight in log if not exists
     await logBodyweight(profile.weightKg, notes: 'Profile updated');
+    notifyDataChanged();
   }
 
   // --- FOOD & MEAL LOGS ---
@@ -906,11 +929,13 @@ class DatabaseService {
   Future<void> addFoodEntry(FoodEntry entry) async {
     final db = await database;
     await db.insert('food_logs', entry.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
   }
 
   Future<void> deleteFoodEntry(String id) async {
     final db = await database;
     await db.delete('food_logs', where: 'id = ?', whereArgs: [id]);
+    notifyDataChanged();
   }
 
   Future<Map<String, dynamic>> getDailyCalorieSummary(String dateString) async {
@@ -978,11 +1003,13 @@ class DatabaseService {
         await db.insert('workouts', plannedWorkout.toMap(), conflictAlgorithm: ConflictAlgorithm.ignore);
       }
     }
+    notifyDataChanged();
   }
 
   Future<void> deleteCustomRoutine(String id) async {
     final db = await database;
     await db.delete('custom_routines', where: 'id = ?', whereArgs: [id]);
+    notifyDataChanged();
   }
 
   // --- EXERCISE MANAGEMENT ---

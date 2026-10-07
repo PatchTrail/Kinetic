@@ -13,6 +13,8 @@ import 'routine_builder_screen.dart';
 import 'exercise_library_screen.dart';
 import '../widgets/animated_dot_matrix_background.dart';
 import '../widgets/welcome_tour_modal.dart';
+import '../widgets/floating_music_capsule.dart';
+import '../services/media_service.dart';
 
 class MainShell extends StatefulWidget {
   final int initialTab;
@@ -31,6 +33,7 @@ class _MainShellState extends State<MainShell> {
     super.initState();
     _currentTabIndex = widget.initialTab;
     KineticTheme.themeModeNotifier.addListener(_onThemeChanged);
+    MediaService.instance.startListening();
     if (widget.showWelcomeTour) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
@@ -49,6 +52,7 @@ class _MainShellState extends State<MainShell> {
   @override
   void dispose() {
     KineticTheme.themeModeNotifier.removeListener(_onThemeChanged);
+    MediaService.instance.stopListening();
     super.dispose();
   }
 
@@ -79,11 +83,26 @@ class _MainShellState extends State<MainShell> {
       backgroundColor: KineticTheme.bgCanvas,
       body: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
-          const SingleActivator(LogicalKeyboardKey.digit1): () => setState(() => _currentTabIndex = 0),
-          const SingleActivator(LogicalKeyboardKey.digit2): () => setState(() => _currentTabIndex = 1),
-          const SingleActivator(LogicalKeyboardKey.digit3): () => setState(() => _currentTabIndex = 2),
-          const SingleActivator(LogicalKeyboardKey.digit4): () => setState(() => _currentTabIndex = 3),
-          const SingleActivator(LogicalKeyboardKey.digit5): () => setState(() => _currentTabIndex = 4),
+          const SingleActivator(LogicalKeyboardKey.digit1): () {
+            setState(() => _currentTabIndex = 0);
+            DatabaseService.notifyDataChanged();
+          },
+          const SingleActivator(LogicalKeyboardKey.digit2): () {
+            setState(() => _currentTabIndex = 1);
+            DatabaseService.notifyDataChanged();
+          },
+          const SingleActivator(LogicalKeyboardKey.digit3): () {
+            setState(() => _currentTabIndex = 2);
+            DatabaseService.notifyDataChanged();
+          },
+          const SingleActivator(LogicalKeyboardKey.digit4): () {
+            setState(() => _currentTabIndex = 3);
+            DatabaseService.notifyDataChanged();
+          },
+          const SingleActivator(LogicalKeyboardKey.digit5): () {
+            setState(() => _currentTabIndex = 4);
+            DatabaseService.notifyDataChanged();
+          },
           const SingleActivator(LogicalKeyboardKey.digit6): () async {
             final w = await DatabaseService.instance.getTodayWorkout();
             if (w != null && context.mounted) {
@@ -122,6 +141,15 @@ class _MainShellState extends State<MainShell> {
                       key: ValueKey('indexed_stack_$themeKey'),
                       index: _currentTabIndex,
                       children: screens,
+                    ),
+
+                    // Floating Music Capsule (Dynamic pop-in when media plays)
+                    Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 84),
+                        child: const FloatingMusicCapsule(),
+                      ),
                     ),
 
                     // Floating Island Bottom Navigation Dock
@@ -202,7 +230,10 @@ class _MainShellState extends State<MainShell> {
     final isSelected = _currentTabIndex == index;
 
     return GestureDetector(
-      onTap: () => setState(() => _currentTabIndex = index),
+      onTap: () {
+        setState(() => _currentTabIndex = index);
+        DatabaseService.notifyDataChanged();
+      },
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),

@@ -38,11 +38,13 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> with SingleTi
     );
     _gaugeAnimController.forward();
 
+    DatabaseService.dataChangeNotifier.addListener(_loadItemsForSelectedDate);
     _loadItemsForSelectedDate();
   }
 
   @override
   void dispose() {
+    DatabaseService.dataChangeNotifier.removeListener(_loadItemsForSelectedDate);
     _gaugeAnimController.dispose();
     super.dispose();
   }

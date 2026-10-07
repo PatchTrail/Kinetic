@@ -34,7 +34,14 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   void initState() {
     super.initState();
+    DatabaseService.dataChangeNotifier.addListener(_loadTelemetry);
     _loadTelemetry();
+  }
+
+  @override
+  void dispose() {
+    DatabaseService.dataChangeNotifier.removeListener(_loadTelemetry);
+    super.dispose();
   }
 
   Future<void> _loadTelemetry() async {

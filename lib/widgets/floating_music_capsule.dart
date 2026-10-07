@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../services/media_service.dart';
 import '../theme/app_theme.dart';
@@ -119,6 +120,22 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
     }
   }
 
+  DecorationImage? _buildAlbumImage(String? url) {
+    if (url == null || url.isEmpty) return null;
+    try {
+      if (url.startsWith('file://')) {
+        final filePath = Uri.parse(url).toFilePath();
+        final file = File(filePath);
+        if (file.existsSync()) {
+          return DecorationImage(image: FileImage(file), fit: BoxFit.cover);
+        }
+      } else if (url.startsWith('http://') || url.startsWith('https://')) {
+        return DecorationImage(image: NetworkImage(url), fit: BoxFit.cover);
+      }
+    } catch (_) {}
+    return null;
+  }
+
   @override
   void dispose() {
     MediaService.instance.currentTrackNotifier.removeListener(_handleTrackChanged);
@@ -141,9 +158,11 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
           return const SizedBox.shrink();
         }
 
+        final albumImg = _buildAlbumImage(track.artUrl);
+
         return SizeTransition(
           sizeFactor: _sizeAnimation,
-          axisAlignment: 0.0,
+          alignment: Alignment.center,
           child: FadeTransition(
             opacity: _fadeAnimation,
             child: SlideTransition(
@@ -191,14 +210,17 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
                               color: KineticTheme.accentFlame.withValues(alpha: 0.6),
                               width: 1.5,
                             ),
+                            image: albumImg,
                           ),
-                          child: Center(
-                            child: Icon(
-                              track.isPlaying ? Icons.music_note_rounded : Icons.graphic_eq_rounded,
-                              size: 16,
-                              color: KineticTheme.accentFlame,
-                            ),
-                          ),
+                          child: albumImg == null
+                              ? Center(
+                                  child: Icon(
+                                    track.isPlaying ? Icons.music_note_rounded : Icons.graphic_eq_rounded,
+                                    size: 16,
+                                    color: KineticTheme.accentFlame,
+                                  ),
+                                )
+                              : null,
                         ),
                       ),
                       const SizedBox(width: 10),
