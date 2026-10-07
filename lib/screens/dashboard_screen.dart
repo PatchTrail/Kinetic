@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/workout.dart';
@@ -6,7 +5,6 @@ import '../models/user_profile.dart';
 import '../models/routine_plan.dart';
 import '../services/database_service.dart';
 import '../services/excel_service.dart';
-import '../services/media_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/routine_number_badge.dart';
 import '../widgets/three_month_dot_grid.dart';
@@ -40,7 +38,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _volumeDelta;
   bool _isLoading = true;
   String _selectedCategory = 'ALL';
-  bool _showAndroidMediaBanner = false;
 
   @override
   void initState() {
@@ -67,12 +64,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final customRoutines = await DatabaseService.instance.getCustomRoutines();
     final volumeDelta = await DatabaseService.instance.getVolumeComparisonDelta();
 
-    bool showMediaBanner = false;
-    if (Platform.isAndroid) {
-      final granted = await MediaService.instance.isAndroidPermissionGranted();
-      showMediaBanner = !granted;
-    }
-
     if (!mounted) return;
     setState(() {
       _todayWorkout = today;
@@ -84,7 +75,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _nutritionSummary = nutrition;
       _customRoutines = customRoutines;
       _volumeDelta = volumeDelta;
-      _showAndroidMediaBanner = showMediaBanner;
       _isLoading = false;
     });
   }
@@ -716,9 +706,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildTopHeader(),
               const SizedBox(height: 12),
 
-              // Android Media Capsule Setup Banner (if Notification Access not yet granted)
-              _buildAndroidMediaBanner(),
-
               // Dynamic Athlete Bio Profile Card
               _buildUserProfileCard(),
               const SizedBox(height: 14),
@@ -757,96 +744,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAndroidMediaBanner() {
-    if (!Platform.isAndroid || !_showAndroidMediaBanner) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: KineticTheme.accentFlame.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: KineticTheme.accentFlame.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: KineticTheme.accentFlame.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.music_note_rounded, color: KineticTheme.accentFlame, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ENABLE MEDIA CAPSULE',
-                  style: TextStyle(
-                    color: KineticTheme.textPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Grant Notification Access to control Spotify & music apps during training.',
-                  style: TextStyle(
-                    color: KineticTheme.textSecondary,
-                    fontSize: 10,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: KineticTheme.accentFlame,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            onPressed: () async {
-              await MediaService.instance.requestAndroidPermission();
-              await Future.delayed(const Duration(milliseconds: 600));
-              final granted = await MediaService.instance.isAndroidPermissionGranted();
-              if (mounted) {
-                setState(() => _showAndroidMediaBanner = !granted);
-              }
-            },
-            child: const Text(
-              'ENABLE',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: Icon(Icons.close, color: KineticTheme.textSecondary, size: 16),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => setState(() => _showAndroidMediaBanner = false),
-          ),
-        ],
       ),
     );
   }

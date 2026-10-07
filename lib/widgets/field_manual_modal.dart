@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import '../services/media_service.dart';
 import '../theme/app_theme.dart';
 
 class FieldManualModal extends StatefulWidget {
@@ -113,29 +112,21 @@ class _FieldManualModalState extends State<FieldManualModal> {
           'body': 'Kinetic includes an interactive media capsule with spinning vinyl artwork, track info, and playback controls (play/pause, next, previous) resting seamlessly above the bottom navigation dock.',
         },
         {
-          'heading': '2. Android Media Access (Spotify / YT Music)',
-          'body': 'On Android, media apps run in protected sandboxes. Granting "Notification Access" enables Kinetic to read track titles, display album art, and let you skip or pause songs during workouts without leaving the app.',
+          'heading': '2. Linux Desktop D-Bus (MPRIS)',
+          'body': 'On Linux desktop, Kinetic connects directly to the system session D-Bus (org.mpris.MediaPlayer2) with zero setup required, controlling Spotify, Brave, Chrome, Amberol, VLC, and others.',
         },
         {
-          'heading': '3. Linux Desktop D-Bus (MPRIS)',
-          'body': 'On Linux desktop, Kinetic connects directly to the system session D-Bus (org.mpris.MediaPlayer2) with zero setup required, controlling Spotify, Brave, Chrome, Amberol, VLC, and others.',
+          'heading': '3. Zero Sensitive Permissions (Standard)',
+          'body': 'In this standard edition (v1.0.1), Kinetic requires zero special Android permissions, installing frictionlessly in one tap without Google Play Protect prompts.',
         },
       ],
     },
   ];
 
-  bool _androidGranted = false;
-
   @override
   void initState() {
     super.initState();
     _selectedTab = widget.initialTab;
-    _checkPermission();
-  }
-
-  Future<void> _checkPermission() async {
-    final granted = await MediaService.instance.isAndroidPermissionGranted();
-    if (mounted) setState(() => _androidGranted = granted);
   }
 
   @override
@@ -291,53 +282,7 @@ class _FieldManualModalState extends State<FieldManualModal> {
                           height: 1.5,
                         ),
                       ),
-                      if (_selectedTab == 4 && index == 1 && Platform.isAndroid) ...[
-                        const SizedBox(height: 14),
-                        InkWell(
-                          onTap: () async {
-                            await MediaService.instance.requestAndroidPermission();
-                            await Future.delayed(const Duration(milliseconds: 600));
-                            _checkPermission();
-                          },
-                          borderRadius: BorderRadius.circular(8),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                            decoration: BoxDecoration(
-                              color: _androidGranted
-                                  ? KineticTheme.accentJade.withValues(alpha: 0.15)
-                                  : KineticTheme.accentFlame.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: _androidGranted ? KineticTheme.accentJade : KineticTheme.accentFlame,
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  _androidGranted ? Icons.check_circle_outline_rounded : Icons.lock_open_rounded,
-                                  color: _androidGranted ? KineticTheme.accentJade : KineticTheme.accentFlame,
-                                  size: 16,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  _androidGranted
-                                      ? 'ACCESS GRANTED // ACTIVE'
-                                      : 'GRANT NOTIFICATION ACCESS',
-                                  style: TextStyle(
-                                    color: _androidGranted ? KineticTheme.accentJade : KineticTheme.accentFlame,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1.0,
-                                    fontFamily: 'monospace',
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                      if (_selectedTab == 4 && index == 2 && Platform.isLinux) ...[
+                      if (_selectedTab == 4 && index == 1 && Platform.isLinux) ...[
                         const SizedBox(height: 14),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
