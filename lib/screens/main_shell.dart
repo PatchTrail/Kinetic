@@ -168,18 +168,21 @@ class _MainShellState extends State<MainShell> {
   }
 
   Widget _buildFloatingDock() {
+    final isDark = KineticTheme.isDarkMode;
+
     return Container(
+      key: ValueKey('dock_${isDark ? "dark" : "light"}'),
       margin: const EdgeInsets.only(bottom: 20, left: 12, right: 12),
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xEB141720),
+        color: KineticTheme.bgSurface.withValues(alpha: isDark ? 0.92 : 0.96),
         borderRadius: BorderRadius.circular(100),
         border: Border.all(color: KineticTheme.borderMedium, width: 1.2),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.65),
-            blurRadius: 24,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.10),
+            blurRadius: 22,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -228,6 +231,7 @@ class _MainShellState extends State<MainShell> {
     required String label,
   }) {
     final isSelected = _currentTabIndex == index;
+    final isDark = KineticTheme.isDarkMode;
 
     return GestureDetector(
       onTap: () {
@@ -251,14 +255,16 @@ class _MainShellState extends State<MainShell> {
             Icon(
               isSelected ? activeIcon : icon,
               size: 19,
-              color: isSelected ? Colors.black : const Color(0xFF94A3B8),
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
             ),
             if (isSelected) ...[
               const SizedBox(width: 6),
               Text(
                 label.toUpperCase(),
                 style: const TextStyle(
-                  color: Colors.black,
+                  color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.5,
