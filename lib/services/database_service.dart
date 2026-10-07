@@ -836,13 +836,14 @@ class DatabaseService {
     required String subtitle,
     required List<String> exerciseIds,
     int estimatedMinutes = 60,
+    DateTime? date,
   }) async {
     final db = await database;
     final w = Workout(
       id: 'w_${DateTime.now().millisecondsSinceEpoch}',
       title: title,
       subtitle: subtitle,
-      date: DateTime.now(),
+      date: date ?? DateTime.now(),
       durationMinutes: estimatedMinutes,
       totalVolumeKg: 0,
       totalSets: exerciseIds.length * 3,
@@ -851,6 +852,64 @@ class DatabaseService {
       exerciseIds: exerciseIds,
     );
     await db.insert('workouts', w.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
+    return w;
+  }
+
+  Future<Workout> quickLogCompletedWorkout({
+    required String title,
+    required String subtitle,
+    required List<String> exerciseIds,
+    int durationMinutes = 45,
+    DateTime? date,
+  }) async {
+    final db = await database;
+    final workoutDate = date ?? DateTime.now();
+    final workoutId = 'w_${DateTime.now().millisecondsSinceEpoch}';
+
+    double totalVolume = 0.0;
+    int totalReps = 0;
+    int setCounter = 0;
+
+    for (final exId in exerciseIds) {
+      final prev = await getLastCompletedSetForExercise(exId);
+      final ex = await getExerciseById(exId);
+      final weight = prev?.weightKg ?? ex?.defaultWeightKg ?? 50.0;
+      final reps = prev?.reps ?? ex?.defaultReps ?? 10;
+      final setsCount = ex?.defaultSets ?? 3;
+
+      for (int i = 1; i <= setsCount; i++) {
+        setCounter++;
+        final s = WorkoutSet(
+          id: 'set_${workoutId}_${exId}_$i',
+          workoutId: workoutId,
+          exerciseId: exId,
+          setNumber: i,
+          weightKg: weight,
+          reps: reps,
+          isCompleted: true,
+          completedAt: workoutDate,
+        );
+        await db.insert('workout_sets', s.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+        totalVolume += (weight * reps);
+        totalReps += reps;
+      }
+    }
+
+    final w = Workout(
+      id: workoutId,
+      title: title,
+      subtitle: subtitle,
+      date: workoutDate,
+      durationMinutes: durationMinutes,
+      totalVolumeKg: totalVolume,
+      totalSets: setCounter,
+      totalReps: totalReps,
+      isCompleted: true,
+      exerciseIds: exerciseIds,
+    );
+    await db.insert('workouts', w.toMap(), conflictAlgorithm: ConflictAlgorithm.replace);
+    notifyDataChanged();
     return w;
   }
 
@@ -967,6 +1026,7 @@ class DatabaseService {
   }
 
   // --- CUSTOM ROUTINES & PLANNER ---
+  Future<List<RoutinePlan>> getRoutinePlans() => getCustomRoutines();
   Future<List<RoutinePlan>> getCustomRoutines() async {
     final db = await database;
     final maps = await db.query('custom_routines');
