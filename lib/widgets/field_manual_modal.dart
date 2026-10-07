@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import '../services/media_service.dart';
 import '../theme/app_theme.dart';
 
 class FieldManualModal extends StatefulWidget {
   final int initialTab;
-  const FieldManualModal({Key? key, this.initialTab = 0}) : super(key: key);
+  const FieldManualModal({super.key, this.initialTab = 0});
 
   static void show(BuildContext context, {int initialTab = 0}) {
     showModalBottomSheet(
@@ -102,12 +104,38 @@ class _FieldManualModalState extends State<FieldManualModal> {
         },
       ],
     },
+    {
+      'title': 'AUDIO & MEDIA CAPSULE',
+      'icon': Icons.music_note_rounded,
+      'sections': [
+        {
+          'heading': '1. Floating Cross-Platform Music Capsule',
+          'body': 'Kinetic includes an interactive media capsule with spinning vinyl artwork, track info, and playback controls (play/pause, next, previous) resting seamlessly above the bottom navigation dock.',
+        },
+        {
+          'heading': '2. Android Media Access (Spotify / YT Music)',
+          'body': 'On Android, media apps run in protected sandboxes. Granting "Notification Access" enables Kinetic to read track titles, display album art, and let you skip or pause songs during workouts without leaving the app.',
+        },
+        {
+          'heading': '3. Linux Desktop D-Bus (MPRIS)',
+          'body': 'On Linux desktop, Kinetic connects directly to the system session D-Bus (org.mpris.MediaPlayer2) with zero setup required, controlling Spotify, Brave, Chrome, Amberol, VLC, and others.',
+        },
+      ],
+    },
   ];
+
+  bool _androidGranted = false;
 
   @override
   void initState() {
     super.initState();
     _selectedTab = widget.initialTab;
+    _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    final granted = await MediaService.instance.isAndroidPermissionGranted();
+    if (mounted) setState(() => _androidGranted = granted);
   }
 
   @override
@@ -234,7 +262,7 @@ class _FieldManualModalState extends State<FieldManualModal> {
             child: ListView.separated(
               padding: const EdgeInsets.all(20),
               itemCount: sections.length,
-              separatorBuilder: (_, _2) => const SizedBox(height: 16),
+              separatorBuilder: (separatorContext, separatorIndex) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final s = sections[index];
                 return Container(
@@ -263,6 +291,80 @@ class _FieldManualModalState extends State<FieldManualModal> {
                           height: 1.5,
                         ),
                       ),
+                      if (_selectedTab == 4 && index == 1 && Platform.isAndroid) ...[
+                        const SizedBox(height: 14),
+                        InkWell(
+                          onTap: () async {
+                            await MediaService.instance.requestAndroidPermission();
+                            await Future.delayed(const Duration(milliseconds: 600));
+                            _checkPermission();
+                          },
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: _androidGranted
+                                  ? KineticTheme.accentJade.withValues(alpha: 0.15)
+                                  : KineticTheme.accentFlame.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _androidGranted ? KineticTheme.accentJade : KineticTheme.accentFlame,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  _androidGranted ? Icons.check_circle_outline_rounded : Icons.lock_open_rounded,
+                                  color: _androidGranted ? KineticTheme.accentJade : KineticTheme.accentFlame,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  _androidGranted
+                                      ? 'ACCESS GRANTED // ACTIVE'
+                                      : 'GRANT NOTIFICATION ACCESS',
+                                  style: TextStyle(
+                                    color: _androidGranted ? KineticTheme.accentJade : KineticTheme.accentFlame,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 1.0,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      if (_selectedTab == 4 && index == 2 && Platform.isLinux) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: KineticTheme.accentJade.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: KineticTheme.accentJade),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle_outline_rounded, color: KineticTheme.accentJade, size: 16),
+                              const SizedBox(width: 8),
+                              Text(
+                                'D-BUS MPRIS CONNECTED // AUTO',
+                                style: TextStyle(
+                                  color: KineticTheme.accentJade,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0,
+                                  fontFamily: 'monospace',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 );

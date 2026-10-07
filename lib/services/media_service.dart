@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 class MediaTrackInfo {
   final String title;
@@ -38,23 +39,130 @@ class MediaService {
   MediaService._();
   static final MediaService instance = MediaService._();
 
+  static const MethodChannel _androidChannel = MethodChannel('com.kinetic.kinetic/media_service');
+
   final ValueNotifier<MediaTrackInfo?> currentTrackNotifier = ValueNotifier<MediaTrackInfo?>(null);
   Timer? _pollTimer;
   String? _activeMprisBus;
   String? _dismissedTrackKey;
+  bool _androidInitialized = false;
 
   void startListening() {
-    _checkMpris();
-    _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+    if (Platform.isLinux) {
       _checkMpris();
-    });
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _checkMpris();
+      });
+    } else if (Platform.isAndroid) {
+      _initAndroidChannel();
+      _queryAndroidTrack();
+      _pollTimer?.cancel();
+      _pollTimer = Timer.periodic(const Duration(seconds: 2), (_) {
+        _queryAndroidTrack();
+      });
+    }
   }
 
   void stopListening() {
     _pollTimer?.cancel();
     _pollTimer = null;
+    if (Platform.isAndroid) {
+      try {
+        _androidChannel.invokeMethod('stopListening');
+      } catch (_) {}
+    }
   }
+
+  // --- ANDROID INTEGRATION ---
+
+  void _initAndroidChannel() {
+    if (_androidInitialized) return;
+    _androidInitialized = true;
+
+    _androidChannel.setMethodCallHandler((call) async {
+      if (call.method == 'onTrackChanged') {
+        _handleAndroidTrackData(call.arguments);
+      }
+    });
+
+    try {
+      _androidChannel.invokeMethod('startListening');
+    } catch (_) {}
+  }
+
+  Future<void> _queryAndroidTrack() async {
+    try {
+      final res = await _androidChannel.invokeMethod('getTrackInfo');
+      _handleAndroidTrackData(res);
+    } catch (_) {}
+  }
+
+  void _handleAndroidTrackData(dynamic raw) {
+    if (raw == null || raw is! Map) {
+      if (currentTrackNotifier.value != null) {
+        currentTrackNotifier.value = null;
+      }
+      return;
+    }
+
+    final map = Map<String, dynamic>.from(raw);
+    final title = (map['title'] as String?)?.trim() ?? '';
+    final artist = (map['artist'] as String?)?.trim() ?? '';
+    final album = (map['album'] as String?)?.trim() ?? '';
+    final isPlaying = map['isPlaying'] as bool? ?? false;
+    final artUrl = map['artUrl'] as String?;
+
+    if (title.isEmpty) {
+      if (currentTrackNotifier.value != null) {
+        currentTrackNotifier.value = null;
+      }
+      return;
+    }
+
+    final trackKey = '${title}_$artist';
+    if (_dismissedTrackKey != null) {
+      if (_dismissedTrackKey == trackKey) {
+        return;
+      } else {
+        _dismissedTrackKey = null;
+      }
+    }
+
+    final prev = currentTrackNotifier.value;
+    if (prev == null ||
+        prev.title != title ||
+        prev.artist != artist ||
+        prev.isPlaying != isPlaying ||
+        prev.artUrl != artUrl) {
+      currentTrackNotifier.value = MediaTrackInfo(
+        title: title,
+        artist: artist,
+        album: album,
+        isPlaying: isPlaying,
+        artUrl: artUrl,
+      );
+    }
+  }
+
+  Future<bool> isAndroidPermissionGranted() async {
+    if (!Platform.isAndroid) return true;
+    try {
+      final res = await _androidChannel.invokeMethod<bool>('isPermissionGranted');
+      return res ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> requestAndroidPermission() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _androidChannel.invokeMethod('requestPermission');
+    } catch (_) {}
+  }
+
+  // --- LINUX MPRIS INTEGRATION ---
 
   Future<void> _checkMpris() async {
     if (!Platform.isLinux) return;
@@ -207,11 +315,13 @@ class MediaService {
     }
   }
 
+  // --- PLAYBACK CONTROLS ---
+
   Future<void> playPause() async {
     final curr = currentTrackNotifier.value;
     if (curr == null) return;
 
-    if (_activeMprisBus != null && Platform.isLinux) {
+    if (Platform.isLinux && _activeMprisBus != null) {
       await Process.run('dbus-send', [
         '--session',
         '--dest=$_activeMprisBus',
@@ -220,6 +330,11 @@ class MediaService {
         'org.mpris.MediaPlayer2.Player.PlayPause',
       ]);
       await _checkMpris();
+    } else if (Platform.isAndroid) {
+      try {
+        await _androidChannel.invokeMethod('playPause');
+        await _queryAndroidTrack();
+      } catch (_) {}
     } else {
       // Local toggle
       currentTrackNotifier.value = curr.copyWith(isPlaying: !curr.isPlaying);
@@ -227,7 +342,7 @@ class MediaService {
   }
 
   Future<void> next() async {
-    if (_activeMprisBus != null && Platform.isLinux) {
+    if (Platform.isLinux && _activeMprisBus != null) {
       await Process.run('dbus-send', [
         '--session',
         '--dest=$_activeMprisBus',
@@ -236,11 +351,16 @@ class MediaService {
         'org.mpris.MediaPlayer2.Player.Next',
       ]);
       await _checkMpris();
+    } else if (Platform.isAndroid) {
+      try {
+        await _androidChannel.invokeMethod('next');
+        await _queryAndroidTrack();
+      } catch (_) {}
     }
   }
 
   Future<void> previous() async {
-    if (_activeMprisBus != null && Platform.isLinux) {
+    if (Platform.isLinux && _activeMprisBus != null) {
       await Process.run('dbus-send', [
         '--session',
         '--dest=$_activeMprisBus',
@@ -249,6 +369,11 @@ class MediaService {
         'org.mpris.MediaPlayer2.Player.Previous',
       ]);
       await _checkMpris();
+    } else if (Platform.isAndroid) {
+      try {
+        await _androidChannel.invokeMethod('previous');
+        await _queryAndroidTrack();
+      } catch (_) {}
     }
   }
 
