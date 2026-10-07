@@ -4,6 +4,7 @@ import '../models/workout.dart';
 import '../services/database_service.dart';
 import '../theme/app_theme.dart';
 import 'active_workout_screen.dart';
+import 'routine_builder_screen.dart';
 
 class CalendarScreen extends StatefulWidget {
   const CalendarScreen({Key? key}) : super(key: key);
@@ -412,6 +413,22 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                 ),
               );
             }),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: OutlinedButton(
+                onPressed: () => _showLogWorkoutSheet(_selectedDate),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: KineticTheme.borderFaint),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                child: Text(
+                  '+ LOG ANOTHER WORKOUT',
+                  style: TextStyle(color: KineticTheme.textSecondary, fontSize: 11, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
           ] else ...[
             Text(
               'No training logged for this day. Scheduled recovery.',
@@ -422,17 +439,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
               width: double.infinity,
               height: 40,
               child: OutlinedButton(
-                onPressed: () async {
-                  final todayWorkout = await DatabaseService.instance.getTodayWorkout();
-                  if (todayWorkout != null && mounted) {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ActiveWorkoutScreen(workout: todayWorkout),
-                      ),
-                    ).then((_) => _loadCalendarData());
-                  }
-                },
+                onPressed: () => _showLogWorkoutSheet(_selectedDate),
                 style: OutlinedButton.styleFrom(
                   side: BorderSide(color: KineticTheme.borderMedium),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -445,6 +452,304 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  void _showLogWorkoutSheet(DateTime targetDate) async {
+    final customRoutines = await DatabaseService.instance.getCustomRoutines();
+    if (!mounted) return;
+
+    final templates = [
+      {
+        'title': 'Chest + tricep',
+        'subtitle': 'Push Hypertrophy',
+        'exercises': ['bench_press', 'incline_db_press', 'overhead_press', 'triceps_extension'],
+        'minutes': 65,
+      },
+      {
+        'title': 'Back + bicep + legs',
+        'subtitle': 'Pull Strength & Squats',
+        'exercises': ['weighted_pull_up', 'barbell_row', 'incline_bicep_curl', 'barbell_squat'],
+        'minutes': 65,
+      },
+      {
+        'title': 'Lower Body Strength',
+        'subtitle': 'Quads + Hamstrings + Core',
+        'exercises': ['barbell_squat', 'romanian_deadlift', 'hanging_leg_raise'],
+        'minutes': 70,
+      },
+      {
+        'title': 'Upper Body Power',
+        'subtitle': 'Bench + Pull-Up + OHP',
+        'exercises': ['bench_press', 'weighted_pull_up', 'overhead_press'],
+        'minutes': 55,
+      },
+      {
+        'title': 'Quick Session',
+        'subtitle': 'Ad-hoc workout session',
+        'exercises': ['bench_press', 'weighted_pull_up'],
+        'minutes': 45,
+      },
+    ];
+
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dateStr = '${months[targetDate.month - 1]} ${targetDate.day}, ${targetDate.year}';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: KineticTheme.bgSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.75,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: KineticTheme.accentFlame.withOpacity(0.15),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(Icons.event_available_rounded, color: KineticTheme.accentFlame, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'LOG WORKOUT',
+                                style: TextStyle(
+                                  color: KineticTheme.textPrimary,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
+                              Text(
+                                dateStr.toUpperCase(),
+                                style: TextStyle(
+                                  color: KineticTheme.accentFlame,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.close_rounded, color: KineticTheme.textSecondary, size: 20),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Flexible(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (customRoutines.isNotEmpty) ...[
+                            Text(
+                              'CUSTOM ROUTINES',
+                              style: TextStyle(
+                                color: KineticTheme.textTertiary,
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            ...customRoutines.map((plan) {
+                              return _buildRoutineOptionTile(
+                                ctx: ctx,
+                                title: plan.title,
+                                subtitle: plan.subtitle,
+                                exercises: plan.exerciseIds,
+                                minutes: plan.estimatedMinutes,
+                                targetDate: targetDate,
+                              );
+                            }),
+                            const SizedBox(height: 14),
+                          ],
+                          Text(
+                            'TEMPLATE ROUTINES',
+                            style: TextStyle(
+                              color: KineticTheme.textTertiary,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          ...templates.map((t) {
+                            return _buildRoutineOptionTile(
+                              ctx: ctx,
+                              title: t['title'] as String,
+                              subtitle: t['subtitle'] as String,
+                              exercises: t['exercises'] as List<String>,
+                              minutes: t['minutes'] as int,
+                              targetDate: targetDate,
+                            );
+                          }),
+                          const SizedBox(height: 10),
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (_) => const RoutineBuilderScreen()),
+                              ).then((_) => _loadCalendarData());
+                            },
+                            icon: const Icon(Icons.add_rounded, size: 16),
+                            label: const Text(
+                              'CREATE NEW ROUTINE',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w800),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: KineticTheme.accentFlame,
+                              side: BorderSide(color: KineticTheme.accentFlame.withOpacity(0.5)),
+                              padding: const EdgeInsets.symmetric(vertical: 12),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRoutineOptionTile({
+    required BuildContext ctx,
+    required String title,
+    required String subtitle,
+    required List<String> exercises,
+    required int minutes,
+    required DateTime targetDate,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: KineticTheme.bgSurfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: KineticTheme.borderFaint),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () async {
+            Navigator.pop(ctx);
+            final newWorkout = await DatabaseService.instance.createCustomWorkout(
+              title: title,
+              subtitle: subtitle,
+              exerciseIds: exercises,
+              estimatedMinutes: minutes,
+              date: targetDate,
+            );
+            if (mounted) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ActiveWorkoutScreen(workout: newWorkout),
+                ),
+              ).then((_) => _loadCalendarData());
+            }
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: KineticTheme.accentFlame.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.fitness_center_rounded, color: KineticTheme.accentFlame, size: 18),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: TextStyle(
+                          color: KineticTheme.textPrimary,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '$subtitle · ~$minutes min',
+                        style: TextStyle(color: KineticTheme.textTertiary, fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+                Tooltip(
+                  message: 'Mark directly as completed',
+                  child: IconButton(
+                    icon: const Icon(Icons.check_circle_outline_rounded, size: 22),
+                    color: KineticTheme.accentJade,
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      await DatabaseService.instance.quickLogCompletedWorkout(
+                        title: title,
+                        subtitle: subtitle,
+                        exerciseIds: exercises,
+                        durationMinutes: minutes,
+                        date: targetDate,
+                      );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Logged "$title" for ${targetDate.day}/${targetDate.month}/${targetDate.year}',
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            backgroundColor: KineticTheme.accentJade,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                        _loadCalendarData();
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 2),
+                Icon(Icons.chevron_right_rounded, color: KineticTheme.textSecondary, size: 18),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
