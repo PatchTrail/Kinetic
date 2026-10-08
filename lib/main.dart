@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import 'dart:ui';
@@ -78,7 +79,10 @@ class KineticFitnessApp extends StatelessWidget {
             final isDark = currentMode == ThemeMode.dark ||
                 (currentMode == ThemeMode.system && brightness == Brightness.dark);
             KineticTheme.updateActiveBrightness(isDark);
-            return child!;
+            return AnnotatedRegion<SystemUiOverlayStyle>(
+              value: KineticTheme.systemOverlayStyle,
+              child: child!,
+            );
           },
           home: initialOnboarded ? const MainShell() : OnboardingScreen(initialProfile: initialProfile),
         );

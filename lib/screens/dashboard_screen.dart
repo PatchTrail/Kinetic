@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/workout.dart';
@@ -6,7 +6,6 @@ import '../models/user_profile.dart';
 import '../models/routine_plan.dart';
 import '../services/database_service.dart';
 import '../services/excel_service.dart';
-import '../services/media_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/routine_number_badge.dart';
 import '../widgets/three_month_dot_grid.dart';
@@ -40,7 +39,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Map<String, dynamic>? _volumeDelta;
   bool _isLoading = true;
   String _selectedCategory = 'ALL';
-  bool _showAndroidMediaBanner = false;
 
   @override
   void initState() {
@@ -67,12 +65,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final customRoutines = await DatabaseService.instance.getCustomRoutines();
     final volumeDelta = await DatabaseService.instance.getVolumeComparisonDelta();
 
-    bool showMediaBanner = false;
-    if (Platform.isAndroid) {
-      final granted = await MediaService.instance.isAndroidPermissionGranted();
-      showMediaBanner = !granted;
-    }
-
     if (!mounted) return;
     setState(() {
       _todayWorkout = today;
@@ -84,7 +76,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
       _nutritionSummary = nutrition;
       _customRoutines = customRoutines;
       _volumeDelta = volumeDelta;
-      _showAndroidMediaBanner = showMediaBanner;
       _isLoading = false;
     });
   }
@@ -716,9 +707,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
               _buildTopHeader(),
               const SizedBox(height: 12),
 
-              // Android Media Capsule Setup Banner (if Notification Access not yet granted)
-              _buildAndroidMediaBanner(),
-
               // Dynamic Athlete Bio Profile Card
               _buildUserProfileCard(),
               const SizedBox(height: 14),
@@ -753,100 +741,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // 7. Recent Logged Sessions Section
               _buildRecentWorkoutsSection(),
-              const SizedBox(height: 90), // Bottom navigation dock clearance
+              SizedBox(height: math.max(120.0, 96.0 + MediaQuery.of(context).padding.bottom)), // Dynamic dock & system nav clearance
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAndroidMediaBanner() {
-    if (!Platform.isAndroid || !_showAndroidMediaBanner) {
-      return const SizedBox.shrink();
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: KineticTheme.accentFlame.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: KineticTheme.accentFlame.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: KineticTheme.accentFlame.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(Icons.music_note_rounded, color: KineticTheme.accentFlame, size: 18),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'ENABLE MEDIA CAPSULE',
-                  style: TextStyle(
-                    color: KineticTheme.textPrimary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 0.8,
-                    fontFamily: 'monospace',
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Grant Notification Access to control Spotify & music apps during training.',
-                  style: TextStyle(
-                    color: KineticTheme.textSecondary,
-                    fontSize: 10,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          TextButton(
-            style: TextButton.styleFrom(
-              backgroundColor: KineticTheme.accentFlame,
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-            ),
-            onPressed: () async {
-              await MediaService.instance.requestAndroidPermission();
-              await Future.delayed(const Duration(milliseconds: 600));
-              final granted = await MediaService.instance.isAndroidPermissionGranted();
-              if (mounted) {
-                setState(() => _showAndroidMediaBanner = !granted);
-              }
-            },
-            child: const Text(
-              'ENABLE',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 0.8,
-                fontFamily: 'monospace',
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          IconButton(
-            icon: Icon(Icons.close, color: KineticTheme.textSecondary, size: 16),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-            onPressed: () => setState(() => _showAndroidMediaBanner = false),
-          ),
-        ],
       ),
     );
   }
@@ -869,76 +767,88 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: KineticTheme.accentFlame.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: KineticTheme.accentFlame.withValues(alpha: 0.5)),
-                    ),
-                    child: const Icon(Icons.person, color: KineticTheme.accentFlame, size: 16),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        name,
-                        style: TextStyle(
-                          color: KineticTheme.textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.0,
-                          fontFamily: 'monospace',
-                        ),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: KineticTheme.accentFlame.withValues(alpha: 0.15),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: KineticTheme.accentFlame.withValues(alpha: 0.5)),
                       ),
-                      const SizedBox(height: 2),
-                      Row(
+                      child: const Icon(Icons.person, color: KineticTheme.accentFlame, size: 16),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: KineticTheme.accentFlame.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(2),
+                          Text(
+                            name,
+                            style: TextStyle(
+                              color: KineticTheme.textPrimary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.0,
+                              fontFamily: 'monospace',
                             ),
-                            child: Text(
-                              goal,
-                              style: const TextStyle(
-                                color: KineticTheme.accentFlame,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'monospace',
-                              ),
-                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: 6),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: KineticTheme.accentCyan.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(2),
-                              border: Border.all(color: KineticTheme.accentCyan.withValues(alpha: 0.3), width: 0.8),
-                            ),
-                            child: Text(
-                              (_userProfile?.gender ?? 'male').toUpperCase() == 'FEMALE' ? 'FEMALE ♀' : 'MALE ♂',
-                              style: const TextStyle(
-                                color: KineticTheme.accentCyan,
-                                fontSize: 8,
-                                fontWeight: FontWeight.w800,
-                                fontFamily: 'monospace',
+                          const SizedBox(height: 2),
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: KineticTheme.accentFlame.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                  child: Text(
+                                    goal,
+                                    style: const TextStyle(
+                                      color: KineticTheme.accentFlame,
+                                      fontSize: 8,
+                                      fontWeight: FontWeight.w800,
+                                      fontFamily: 'monospace',
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
                               ),
-                            ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: KineticTheme.accentCyan.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(2),
+                                  border: Border.all(color: KineticTheme.accentCyan.withValues(alpha: 0.3), width: 0.8),
+                                ),
+                                child: Text(
+                                  (_userProfile?.gender ?? 'male').toUpperCase() == 'FEMALE' ? 'FEMALE ♀' : 'MALE ♂',
+                                  style: const TextStyle(
+                                    color: KineticTheme.accentCyan,
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.w800,
+                                    fontFamily: 'monospace',
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   IconButton(
                     icon: Icon(Icons.fitness_center, size: 16, color: KineticTheme.textSecondary),
@@ -1093,30 +1003,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: KineticTheme.accentFlame.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: KineticTheme.accentFlame.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(Icons.restaurant_rounded, color: KineticTheme.accentFlame, size: 14),
                     ),
-                    child: const Icon(Icons.restaurant_rounded, color: KineticTheme.accentFlame, size: 14),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'DAILY NUTRITION // INGESTION',
-                    style: TextStyle(
-                      color: KineticTheme.textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      fontFamily: 'monospace',
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'DAILY NUTRITION // INGESTION',
+                        style: TextStyle(
+                          color: KineticTheme.textPrimary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                          fontFamily: 'monospace',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   if (widget.onNavigateTab != null) {
@@ -1228,30 +1145,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: KineticTheme.accentEmerald.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
+              Expanded(
+                child: Row(
+                  children: [
+                    Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: KineticTheme.accentEmerald.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: const Icon(Icons.event_repeat_rounded, color: KineticTheme.accentEmerald, size: 14),
                     ),
-                    child: const Icon(Icons.event_repeat_rounded, color: KineticTheme.accentEmerald, size: 14),
-                  ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'SCHEDULED ROUTINES & PLANS',
-                    style: TextStyle(
-                      color: KineticTheme.textPrimary,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.0,
-                      fontFamily: 'monospace',
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'SCHEDULED ROUTINES & PLANS',
+                        style: TextStyle(
+                          color: KineticTheme.textPrimary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.0,
+                          fontFamily: 'monospace',
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               InkWell(
                 onTap: () {
                   Navigator.push(
@@ -1501,200 +1425,206 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final weightStr = _currentBodyweight > 0 ? _currentBodyweight.toStringAsFixed(1) : '--';
     final weightSubtitle = _currentBodyweight > 0 ? 'Logged weight · Tap to update' : 'No entries · Tap to log';
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Left Card: Routine 1
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              if (_todayWorkout != null) {
-                _startWorkout(_todayWorkout);
-              } else if (_customRoutines.isNotEmpty) {
-                final plan = _customRoutines.first;
-                DatabaseService.instance.createCustomWorkout(
-                  title: plan.title,
-                  subtitle: plan.subtitle,
-                  exerciseIds: plan.exerciseIds,
-                  estimatedMinutes: plan.estimatedMinutes,
-                ).then((w) => _startWorkout(w));
-              } else {
-                _showCreateWorkoutDialog();
-              }
-            },
-            child: Container(
-              height: 175,
-              padding: const EdgeInsets.all(16),
-              decoration: KineticTheme.cardDecoration(
-                backgroundColor: KineticTheme.bgSurface,
-                border: Border.all(color: KineticTheme.borderFaint),
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Left Card: Routine 1
+          Expanded(
+            child: GestureDetector(
+              onTap: () {
+                if (_todayWorkout != null) {
+                  _startWorkout(_todayWorkout);
+                } else if (_customRoutines.isNotEmpty) {
+                  final plan = _customRoutines.first;
+                  DatabaseService.instance.createCustomWorkout(
+                    title: plan.title,
+                    subtitle: plan.subtitle,
+                    exerciseIds: plan.exerciseIds,
+                    estimatedMinutes: plan.estimatedMinutes,
+                  ).then((w) => _startWorkout(w));
+                } else {
+                  _showCreateWorkoutDialog();
+                }
+              },
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 185),
+                padding: const EdgeInsets.all(16),
+                decoration: KineticTheme.cardDecoration(
+                  backgroundColor: KineticTheme.bgSurface,
+                  border: Border.all(color: KineticTheme.borderFaint),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        RoutineNumberBadge(number: 1, progress: r1Progress, size: 40),
+                        IconButton(
+                          icon: Icon(Icons.more_horiz_rounded, color: KineticTheme.textTertiary, size: 18),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: _showCreateWorkoutDialog,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          r1Title,
+                          style: TextStyle(
+                            color: KineticTheme.textPrimary,
+                            fontSize: 17,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: -0.3,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          r1Subtitle,
+                          style: TextStyle(
+                            color: KineticTheme.textTertiary,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: KineticTheme.accentFlame.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(color: KineticTheme.accentFlame.withOpacity(0.4)),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.play_arrow_rounded, color: KineticTheme.accentFlame, size: 14),
+                              SizedBox(width: 4),
+                              Text(
+                                'START',
+                                style: TextStyle(
+                                  color: KineticTheme.accentFlame,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      RoutineNumberBadge(number: 1, progress: r1Progress, size: 40),
-                      IconButton(
-                        icon: Icon(Icons.more_horiz_rounded, color: KineticTheme.textTertiary, size: 18),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: _showCreateWorkoutDialog,
-                      ),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        r1Title,
-                        style: TextStyle(
-                          color: KineticTheme.textPrimary,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(width: 12),
+
+          // Right Card: Body weight
+          Expanded(
+            child: GestureDetector(
+              onTap: _showLogBodyweightDialog,
+              child: Container(
+                constraints: const BoxConstraints(minHeight: 185),
+                padding: const EdgeInsets.all(16),
+                decoration: KineticTheme.cardDecoration(
+                  backgroundColor: KineticTheme.bgSurface,
+                  border: Border.all(color: KineticTheme.borderFaint),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: KineticTheme.bgSurfaceElevated,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.monitor_weight_outlined, size: 12, color: KineticTheme.textSecondary),
+                              const SizedBox(width: 4),
+                              Text(
+                                'WEIGHT',
+                                style: TextStyle(color: KineticTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        r1Subtitle,
-                        style: TextStyle(
-                          color: KineticTheme.textTertiary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: KineticTheme.accentFlame.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: KineticTheme.accentFlame.withOpacity(0.4)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
+                        Icon(Icons.tune_rounded, color: KineticTheme.textTertiary, size: 18),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.baseline,
+                          textBaseline: TextBaseline.alphabetic,
                           children: [
-                            Icon(Icons.play_arrow_rounded, color: KineticTheme.accentFlame, size: 14),
-                            SizedBox(width: 4),
                             Text(
-                              'START',
+                              weightStr,
                               style: TextStyle(
-                                color: KineticTheme.accentFlame,
-                                fontSize: 10,
+                                color: KineticTheme.textPrimary,
+                                fontSize: 28,
                                 fontWeight: FontWeight.w900,
-                                letterSpacing: 0.5,
+                                fontFamily: 'monospace',
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'kg',
+                              style: TextStyle(
+                                color: KineticTheme.textSecondary,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Body weight',
+                          style: TextStyle(
+                            color: KineticTheme.textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          weightSubtitle,
+                          style: TextStyle(
+                            color: KineticTheme.textTertiary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
           ),
-        ),
-        const SizedBox(width: 12),
-
-        // Right Card: Body weight
-        Expanded(
-          child: GestureDetector(
-            onTap: _showLogBodyweightDialog,
-            child: Container(
-              height: 175,
-              padding: const EdgeInsets.all(16),
-              decoration: KineticTheme.cardDecoration(
-                backgroundColor: KineticTheme.bgSurface,
-                border: Border.all(color: KineticTheme.borderFaint),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: KineticTheme.bgSurfaceElevated,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.monitor_weight_outlined, size: 12, color: KineticTheme.textSecondary),
-                            SizedBox(width: 4),
-                            Text(
-                              'WEIGHT',
-                              style: TextStyle(color: KineticTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.tune_rounded, color: KineticTheme.textTertiary, size: 18),
-                    ],
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.baseline,
-                        textBaseline: TextBaseline.alphabetic,
-                        children: [
-                          Text(
-                            weightStr,
-                            style: TextStyle(
-                              color: KineticTheme.textPrimary,
-                              fontSize: 28,
-                              fontWeight: FontWeight.w900,
-                              fontFamily: 'monospace',
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'kg',
-                            style: TextStyle(
-                              color: KineticTheme.textSecondary,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Body weight',
-                        style: TextStyle(
-                          color: KineticTheme.textSecondary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        weightSubtitle,
-                        style: TextStyle(
-                          color: KineticTheme.textTertiary,
-                          fontSize: 10,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -1809,6 +1739,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               fontSize: 11,
                               fontWeight: FontWeight.w500,
                             ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),

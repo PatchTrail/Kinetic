@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/daily_routine_item.dart';
@@ -136,7 +137,7 @@ class _DailyTimelineScreenState extends State<DailyTimelineScreen> with SingleTi
 
                     // Connected Vertical Timeline
                     _buildConnectedTimeline(),
-                    const SizedBox(height: 90),
+                    SizedBox(height: math.max(120.0, 96.0 + MediaQuery.of(context).padding.bottom)),
                   ],
                 ),
               ),
