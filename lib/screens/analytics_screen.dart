@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/muscle_group.dart';
 import '../services/database_service.dart';
@@ -170,7 +171,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
 
               // Excel / CSV Export & Import Center
               _buildDataManagementSection(),
-              const SizedBox(height: 90),
+              SizedBox(height: math.max(120.0, 96.0 + MediaQuery.of(context).padding.bottom)),
             ],
           ),
         ),

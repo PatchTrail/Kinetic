@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 /// Kinetic Design System - Precision High-Contrast Field OS
 /// Supports Light OS (Alabaster Field), Dark OS (Stealth Titanium), and System Auto.
@@ -14,8 +15,18 @@ class KineticTheme {
   }
   static ThemeMode get currentMode => themeModeNotifier.value;
 
+  static SystemUiOverlayStyle get systemOverlayStyle => SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: _isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: _isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: _isDark ? const Color(0xFF0C0D12) : const Color(0xFFF4F5F8),
+        systemNavigationBarIconBrightness: _isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarDividerColor: Colors.transparent,
+      );
+
   static void updateActiveBrightness(bool isDark) {
     _isDark = isDark;
+    SystemChrome.setSystemUIOverlayStyle(systemOverlayStyle);
   }
 
   static void setThemeMode(ThemeMode mode) {
@@ -27,6 +38,7 @@ class KineticTheme {
       _isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
     }
     themeModeNotifier.value = mode;
+    SystemChrome.setSystemUIOverlayStyle(systemOverlayStyle);
   }
 
   // Pure Surface Colors - Adaptive Light / Dark

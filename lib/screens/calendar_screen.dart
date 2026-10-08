@@ -105,7 +105,7 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
 
                     // Frequency Breakdown (References/Habit Tracker.jpg)
                     _buildFrequencySection(),
-                    const SizedBox(height: 90),
+                    SizedBox(height: max(120.0, 96.0 + MediaQuery.of(context).padding.bottom)),
                   ],
                 ),
               ),

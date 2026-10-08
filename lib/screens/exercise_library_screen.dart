@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../models/exercise.dart';
 import '../models/muscle_group.dart';
@@ -57,10 +58,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
 
   void _showAddCustomExerciseModal() {
     final nameCtrl = TextEditingController();
-    final equipCtrl = TextEditingController(text: 'Dumbbells');
-    final setsCtrl = TextEditingController(text: '3');
-    final repsCtrl = TextEditingController(text: '10');
-    final weightCtrl = TextEditingController(text: '20.0');
+    final equipCtrl = TextEditingController();
+    final setsCtrl = TextEditingController();
+    final repsCtrl = TextEditingController();
+    final weightCtrl = TextEditingController();
     final instCtrl = TextEditingController();
     String category = 'Push';
     final List<MuscleGroup> selectedMuscles = [MuscleGroup.chest];
@@ -76,9 +77,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final bottomInset = MediaQuery.of(context).padding.bottom;
             return Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + math.max(20.0, bottomInset + 14.0),
                 left: 20,
                 right: 20,
                 top: 20,
@@ -205,8 +207,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                       controller: equipCtrl,
                       style: TextStyle(color: KineticTheme.textPrimary, fontSize: 13),
                       decoration: InputDecoration(
-                        labelText: 'EQUIPMENT',
+                        labelText: 'EQUIPMENT *',
                         labelStyle: TextStyle(color: AppTheme.textMuted, fontSize: 11, fontFamily: 'monospace'),
+                        hintText: 'e.g. Dumbbells',
+                        hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 11),
                         filled: true,
                         fillColor: AppTheme.cardBackground,
                         border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cardBorder)),
@@ -224,8 +228,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                             keyboardType: TextInputType.number,
                             style: TextStyle(color: KineticTheme.textPrimary, fontSize: 13, fontFamily: 'monospace'),
                             decoration: InputDecoration(
-                              labelText: 'SETS',
+                              labelText: 'SETS *',
                               labelStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
+                              hintText: 'e.g. 3',
+                              hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10),
                               filled: true,
                               fillColor: AppTheme.cardBackground,
                               border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cardBorder)),
@@ -239,8 +245,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                             keyboardType: TextInputType.number,
                             style: TextStyle(color: KineticTheme.textPrimary, fontSize: 13, fontFamily: 'monospace'),
                             decoration: InputDecoration(
-                              labelText: 'REPS',
+                              labelText: 'REPS *',
                               labelStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
+                              hintText: 'e.g. 10',
+                              hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10),
                               filled: true,
                               fillColor: AppTheme.cardBackground,
                               border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cardBorder)),
@@ -254,8 +262,10 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                             keyboardType: const TextInputType.numberWithOptions(decimal: true),
                             style: TextStyle(color: KineticTheme.textPrimary, fontSize: 13, fontFamily: 'monospace'),
                             decoration: InputDecoration(
-                              labelText: 'KG',
+                              labelText: 'KG *',
                               labelStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10, fontFamily: 'monospace'),
+                              hintText: 'e.g. 20.0',
+                              hintStyle: TextStyle(color: AppTheme.textMuted, fontSize: 10),
                               filled: true,
                               fillColor: AppTheme.cardBackground,
                               border: OutlineInputBorder(borderSide: BorderSide(color: AppTheme.cardBorder)),
@@ -293,7 +303,39 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
                       ),
                       onPressed: () async {
-                        if (nameCtrl.text.trim().isEmpty) return;
+                        if (nameCtrl.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Exercise name is mandatory')),
+                          );
+                          return;
+                        }
+                        if (equipCtrl.text.trim().isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Equipment field is mandatory (e.g. Dumbbells)')),
+                          );
+                          return;
+                        }
+                        final parsedSets = int.tryParse(setsCtrl.text.trim());
+                        if (setsCtrl.text.trim().isEmpty || parsedSets == null || parsedSets <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Sets count is mandatory (e.g. 3)')),
+                          );
+                          return;
+                        }
+                        final parsedReps = int.tryParse(repsCtrl.text.trim());
+                        if (repsCtrl.text.trim().isEmpty || parsedReps == null || parsedReps <= 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Reps count is mandatory (e.g. 10)')),
+                          );
+                          return;
+                        }
+                        final parsedWeight = double.tryParse(weightCtrl.text.trim());
+                        if (weightCtrl.text.trim().isEmpty || parsedWeight == null || parsedWeight < 0) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Weight in KG is mandatory (e.g. 20.0)')),
+                          );
+                          return;
+                        }
 
                         final newEx = Exercise(
                           id: 'custom_${DateTime.now().millisecondsSinceEpoch}',
@@ -301,11 +343,11 @@ class _ExerciseLibraryScreenState extends State<ExerciseLibraryScreen> {
                           category: category,
                           primaryMuscles: selectedMuscles,
                           secondaryMuscles: [],
-                          equipment: equipCtrl.text.trim().isEmpty ? 'Bodyweight' : equipCtrl.text.trim(),
+                          equipment: equipCtrl.text.trim(),
                           instructions: instCtrl.text.trim().isEmpty ? 'Execute with controlled tempo.' : instCtrl.text.trim(),
-                          defaultSets: int.tryParse(setsCtrl.text) ?? 3,
-                          defaultReps: int.tryParse(repsCtrl.text) ?? 10,
-                          defaultWeightKg: double.tryParse(weightCtrl.text) ?? 20.0,
+                          defaultSets: parsedSets,
+                          defaultReps: parsedReps,
+                          defaultWeightKg: parsedWeight,
                         );
 
                         await DatabaseService.instance.addCustomExercise(newEx);
