@@ -33,10 +33,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void initState() {
     super.initState();
     final p = widget.initialProfile;
-    _nameController = TextEditingController(text: p?.name ?? 'Taha');
-    _ageController = TextEditingController(text: p?.age.toString() ?? '26');
-    _weightController = TextEditingController(text: p?.weightKg.toStringAsFixed(1) ?? '82.3');
-    _heightController = TextEditingController(text: p?.heightCm.toStringAsFixed(0) ?? '180');
+    _nameController = TextEditingController(text: p?.name ?? '');
+    _ageController = TextEditingController(text: p != null ? p.age.toString() : '');
+    _weightController = TextEditingController(text: p != null ? p.weightKg.toStringAsFixed(1) : '');
+    _heightController = TextEditingController(text: p != null ? p.heightCm.toStringAsFixed(0) : '');
     _selectedGender = p?.gender ?? 'male';
     _selectedGoal = p?.goal ?? 'gain_muscle';
 
@@ -54,8 +54,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  double get _currentWeight => double.tryParse(_weightController.text) ?? 80.0;
-  double get _currentHeight => double.tryParse(_heightController.text) ?? 180.0;
+  double get _currentWeight => double.tryParse(_weightController.text) ?? 75.0;
+  double get _currentHeight => double.tryParse(_heightController.text) ?? 175.0;
   int get _currentAge => int.tryParse(_ageController.text) ?? 25;
 
   int get _computedCalories => UserProfile.calculateDefaultCalories(
@@ -164,14 +164,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ),
                     ),
                     const SizedBox(width: 10),
-                    const Text(
-                      'BIO-DATA PROFILE CONFIGURATION',
-                      style: TextStyle(
-                        color: AppTheme.accentOrange,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 1.5,
-                        fontFamily: 'monospace',
+                    const Expanded(
+                      child: Text(
+                        'BIO-DATA PROFILE CONFIGURATION',
+                        style: TextStyle(
+                          color: AppTheme.accentOrange,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.5,
+                          fontFamily: 'monospace',
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -185,9 +188,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 8),
               _buildTextField(
                 controller: _nameController,
-                hint: 'e.g. Taha',
+                hint: 'e.g. John',
                 icon: Icons.person_outline,
-                validator: (val) => val == null || val.trim().isEmpty ? 'Please enter a name' : null,
+                validator: (val) => val == null || val.trim().isEmpty ? 'Name is required' : null,
               ),
 
               const SizedBox(height: 20),
@@ -231,13 +234,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: _ageController,
-                          hint: '26',
+                          hint: 'e.g. 25',
                           icon: Icons.cake_outlined,
                           isNumeric: true,
                           suffix: 'YRS',
                           validator: (val) {
-                            final n = int.tryParse(val ?? '');
-                            if (n == null || n < 12 || n > 110) return 'Invalid';
+                            if (val == null || val.trim().isEmpty) return 'Age is required';
+                            final n = int.tryParse(val.trim());
+                            if (n == null || n < 12 || n > 110) return 'Age: 12-110';
                             return null;
                           },
                         ),
@@ -253,13 +257,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         const SizedBox(height: 8),
                         _buildTextField(
                           controller: _weightController,
-                          hint: '82.3',
+                          hint: 'e.g. 75.0',
                           icon: Icons.monitor_weight_outlined,
                           isNumeric: true,
                           suffix: 'KG',
                           validator: (val) {
-                            final n = double.tryParse(val ?? '');
-                            if (n == null || n < 30 || n > 350) return 'Invalid';
+                            if (val == null || val.trim().isEmpty) return 'Weight is required';
+                            final n = double.tryParse(val.trim());
+                            if (n == null || n < 30 || n > 350) return 'Weight: 30-350 kg';
                             return null;
                           },
                         ),
@@ -276,13 +281,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               const SizedBox(height: 8),
               _buildTextField(
                 controller: _heightController,
-                hint: '180',
+                hint: 'e.g. 178',
                 icon: Icons.height_outlined,
                 isNumeric: true,
                 suffix: 'CM',
                 validator: (val) {
-                  final n = double.tryParse(val ?? '');
-                  if (n == null || n < 100 || n > 250) return 'Invalid';
+                  if (val == null || val.trim().isEmpty) return 'Height is required';
+                  final n = double.tryParse(val.trim());
+                  if (n == null || n < 100 || n > 250) return 'Height: 100-250 cm';
                   return null;
                 },
               ),
@@ -332,15 +338,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     Row(
                       children: [
                         Icon(Icons.calculate_outlined, color: AppTheme.textMuted, size: 16),
-                        SizedBox(width: 8),
-                        Text(
-                          'ESTIMATED METABOLIC TELEMETRY',
-                          style: TextStyle(
-                            color: AppTheme.textMuted,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 1.5,
-                            fontFamily: 'monospace',
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'ESTIMATED METABOLIC TELEMETRY',
+                            style: TextStyle(
+                              color: AppTheme.textMuted,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1.5,
+                              fontFamily: 'monospace',
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -414,14 +423,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             fontFamily: 'monospace',
           ),
         ),
-        Text(
-          title,
-          style: TextStyle(
-            color: AppTheme.textPrimary,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.2,
-            fontFamily: 'monospace',
+        Expanded(
+          child: Text(
+            title,
+            style: TextStyle(
+              color: AppTheme.textPrimary,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 1.2,
+              fontFamily: 'monospace',
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -522,20 +534,23 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     color: isSelected ? accentColor : Colors.transparent,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isSelected ? KineticTheme.textPrimary : AppTheme.textSecondary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 13,
-                    letterSpacing: 1.0,
-                    fontFamily: 'monospace',
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? KineticTheme.textPrimary : AppTheme.textSecondary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                      letterSpacing: 0.8,
+                      fontFamily: 'monospace',
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 6),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.15),
                     borderRadius: BorderRadius.circular(2),
@@ -544,7 +559,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     badge,
                     style: TextStyle(
                       color: accentColor,
-                      fontSize: 10,
+                      fontSize: 9,
                       fontWeight: FontWeight.w700,
                       fontFamily: 'monospace',
                     ),
@@ -554,12 +569,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             const SizedBox(height: 6),
             Padding(
-              padding: const EdgeInsets.only(left: 28),
+              padding: const EdgeInsets.only(left: 26),
               child: Text(
                 description,
                 style: TextStyle(
                   color: AppTheme.textMuted,
-                  fontSize: 12,
+                  fontSize: 11,
                   height: 1.3,
                 ),
               ),
@@ -583,7 +598,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       onTap: () => setState(() => _selectedGender = value),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected ? AppTheme.accentOrange.withValues(alpha: 0.1) : AppTheme.cardBackground,
           borderRadius: BorderRadius.circular(4),
@@ -596,32 +611,36 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             Icon(
               icon,
-              size: 22,
+              size: 20,
               color: isSelected ? AppTheme.accentOrange : AppTheme.textMuted,
             ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: isSelected ? KineticTheme.textPrimary : AppTheme.textSecondary,
-                    fontWeight: FontWeight.w800,
-                    fontSize: 12,
-                    letterSpacing: 1.0,
-                    fontFamily: 'monospace',
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected ? KineticTheme.textPrimary : AppTheme.textSecondary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                      letterSpacing: 0.8,
+                      fontFamily: 'monospace',
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    color: AppTheme.textMuted,
-                    fontSize: 9,
-                    fontFamily: 'monospace',
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: AppTheme.textMuted,
+                      fontSize: 9,
+                      fontFamily: 'monospace',
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
@@ -630,46 +649,53 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   Widget _buildMetricMini(String label, String value, String unit, Color highlightColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppTheme.textMuted,
-            fontSize: 9,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 1.0,
-            fontFamily: 'monospace',
+    return Flexible(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: AppTheme.textMuted,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.8,
+              fontFamily: 'monospace',
+            ),
+            overflow: TextOverflow.ellipsis,
           ),
-        ),
-        const SizedBox(height: 4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.baseline,
-          textBaseline: TextBaseline.alphabetic,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: highlightColor,
-                fontSize: 18,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'monospace',
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Flexible(
+                child: Text(
+                  value,
+                  style: TextStyle(
+                    color: highlightColor,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace',
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              unit,
-              style: TextStyle(
-                color: AppTheme.textMuted,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
-                fontFamily: 'monospace',
+              const SizedBox(width: 3),
+              Text(
+                unit,
+                style: TextStyle(
+                  color: AppTheme.textMuted,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: 'monospace',
+                ),
               ),
-            ),
-          ],
-        ),
-      ],
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

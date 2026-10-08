@@ -292,16 +292,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '7-DAY VOLUME PER MUSCLE GROUP',
-                style: TextStyle(
-                  color: KineticTheme.textSecondary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.1,
+              Expanded(
+                child: Text(
+                  '7-DAY VOLUME PER MUSCLE GROUP',
+                  style: TextStyle(
+                    color: KineticTheme.textSecondary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.1,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              if (totalVol > 0)
+              if (totalVol > 0) ...[
+                const SizedBox(width: 8),
                 Text(
                   '${_formatKg(totalVol)} kg TOTAL',
                   style: const TextStyle(
@@ -311,6 +315,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     letterSpacing: 0.5,
                   ),
                 ),
+              ],
             ],
           ),
           const SizedBox(height: 14),

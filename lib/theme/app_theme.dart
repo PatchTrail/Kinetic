@@ -7,7 +7,11 @@ class KineticTheme {
   static final ValueNotifier<ThemeMode> themeModeNotifier = ValueNotifier<ThemeMode>(ThemeMode.system);
   static bool _isDark = false;
 
-  static bool get isDarkMode => _isDark;
+  static bool get isDarkMode {
+    if (themeModeNotifier.value == ThemeMode.dark) return true;
+    if (themeModeNotifier.value == ThemeMode.light) return false;
+    return _isDark;
+  }
   static ThemeMode get currentMode => themeModeNotifier.value;
 
   static void updateActiveBrightness(bool isDark) {
@@ -15,6 +19,13 @@ class KineticTheme {
   }
 
   static void setThemeMode(ThemeMode mode) {
+    if (mode == ThemeMode.dark) {
+      _isDark = true;
+    } else if (mode == ThemeMode.light) {
+      _isDark = false;
+    } else {
+      _isDark = WidgetsBinding.instance.platformDispatcher.platformBrightness == Brightness.dark;
+    }
     themeModeNotifier.value = mode;
   }
 
