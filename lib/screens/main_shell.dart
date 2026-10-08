@@ -27,6 +27,7 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   late int _currentTabIndex;
+  final ScrollController _dockScrollController = ScrollController();
 
   @override
   void initState() {
@@ -49,8 +50,27 @@ class _MainShellState extends State<MainShell> {
     }
   }
 
+  void _onSelectTab(int index) {
+    setState(() => _currentTabIndex = index);
+    DatabaseService.notifyDataChanged();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_dockScrollController.hasClients) {
+        final maxScroll = _dockScrollController.position.maxScrollExtent;
+        if (maxScroll > 0) {
+          final target = (index / 4.0) * maxScroll;
+          _dockScrollController.animateTo(
+            target,
+            duration: const Duration(milliseconds: 240),
+            curve: Curves.easeOutCubic,
+          );
+        }
+      }
+    });
+  }
+
   @override
   void dispose() {
+    _dockScrollController.dispose();
     KineticTheme.themeModeNotifier.removeListener(_onThemeChanged);
     MediaService.instance.stopListening();
     super.dispose();
@@ -63,7 +83,7 @@ class _MainShellState extends State<MainShell> {
     final screens = [
       DashboardScreen(
         key: ValueKey('dash_$themeKey'),
-        onNavigateTab: (idx) => setState(() => _currentTabIndex = idx),
+        onNavigateTab: (idx) => _onSelectTab(idx),
       ),
       CalendarScreen(
         key: ValueKey('cal_$themeKey'),
@@ -83,26 +103,11 @@ class _MainShellState extends State<MainShell> {
       backgroundColor: KineticTheme.bgCanvas,
       body: CallbackShortcuts(
         bindings: <ShortcutActivator, VoidCallback>{
-          const SingleActivator(LogicalKeyboardKey.digit1): () {
-            setState(() => _currentTabIndex = 0);
-            DatabaseService.notifyDataChanged();
-          },
-          const SingleActivator(LogicalKeyboardKey.digit2): () {
-            setState(() => _currentTabIndex = 1);
-            DatabaseService.notifyDataChanged();
-          },
-          const SingleActivator(LogicalKeyboardKey.digit3): () {
-            setState(() => _currentTabIndex = 2);
-            DatabaseService.notifyDataChanged();
-          },
-          const SingleActivator(LogicalKeyboardKey.digit4): () {
-            setState(() => _currentTabIndex = 3);
-            DatabaseService.notifyDataChanged();
-          },
-          const SingleActivator(LogicalKeyboardKey.digit5): () {
-            setState(() => _currentTabIndex = 4);
-            DatabaseService.notifyDataChanged();
-          },
+          const SingleActivator(LogicalKeyboardKey.digit1): () => _onSelectTab(0),
+          const SingleActivator(LogicalKeyboardKey.digit2): () => _onSelectTab(1),
+          const SingleActivator(LogicalKeyboardKey.digit3): () => _onSelectTab(2),
+          const SingleActivator(LogicalKeyboardKey.digit4): () => _onSelectTab(3),
+          const SingleActivator(LogicalKeyboardKey.digit5): () => _onSelectTab(4),
           const SingleActivator(LogicalKeyboardKey.digit6): () async {
             final w = await DatabaseService.instance.getTodayWorkout();
             if (w != null && context.mounted) {
@@ -169,15 +174,24 @@ class _MainShellState extends State<MainShell> {
 
   Widget _buildFloatingDock() {
     final isDark = KineticTheme.isDarkMode;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isNarrow = screenWidth < 380;
 
     return Container(
       key: ValueKey('dock_${isDark ? "dark" : "light"}'),
-      margin: const EdgeInsets.only(bottom: 20, left: 12, right: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      margin: EdgeInsets.only(
+        bottom: 20,
+        left: isNarrow ? 8 : 12,
+        right: isNarrow ? 8 : 12,
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
-        color: KineticTheme.bgSurface.withValues(alpha: isDark ? 0.92 : 0.96),
+        color: (isDark ? const Color(0xFF141720) : const Color(0xFFFFFFFF)).withValues(alpha: isDark ? 0.92 : 0.96),
         borderRadius: BorderRadius.circular(100),
-        border: Border.all(color: KineticTheme.borderMedium, width: 1.2),
+        border: Border.all(
+          color: isDark ? const Color(0xFF32384A) : const Color(0xFFCBD2DE),
+          width: 1.2,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.10),
@@ -186,40 +200,63 @@ class _MainShellState extends State<MainShell> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildDockItem(
-            index: 0,
-            icon: Icons.grid_view_outlined,
-            activeIcon: Icons.grid_view_rounded,
-            label: 'Workouts',
-          ),
-          _buildDockItem(
-            index: 1,
-            icon: Icons.calendar_month_outlined,
-            activeIcon: Icons.calendar_month_rounded,
-            label: 'Calendar',
-          ),
-          _buildDockItem(
-            index: 2,
-            icon: Icons.restaurant_outlined,
-            activeIcon: Icons.restaurant_rounded,
-            label: 'Nutrition',
-          ),
-          _buildDockItem(
-            index: 3,
-            icon: Icons.accessibility_new_outlined,
-            activeIcon: Icons.accessibility_new_rounded,
-            label: 'Anatomy',
-          ),
-          _buildDockItem(
-            index: 4,
-            icon: Icons.view_timeline_outlined,
-            activeIcon: Icons.view_timeline_rounded,
-            label: 'Protocol',
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            controller: _dockScrollController,
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minWidth: constraints.maxWidth),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                mainAxisSize: MainAxisSize.max,
+                children: [
+                  _buildDockItem(
+                    index: 0,
+                    icon: Icons.grid_view_outlined,
+                    activeIcon: Icons.grid_view_rounded,
+                    label: 'Workouts',
+                    isNarrow: isNarrow,
+                    isDark: isDark,
+                  ),
+                  _buildDockItem(
+                    index: 1,
+                    icon: Icons.calendar_month_outlined,
+                    activeIcon: Icons.calendar_month_rounded,
+                    label: 'Calendar',
+                    isNarrow: isNarrow,
+                    isDark: isDark,
+                  ),
+                  _buildDockItem(
+                    index: 2,
+                    icon: Icons.restaurant_outlined,
+                    activeIcon: Icons.restaurant_rounded,
+                    label: 'Nutrition',
+                    isNarrow: isNarrow,
+                    isDark: isDark,
+                  ),
+                  _buildDockItem(
+                    index: 3,
+                    icon: Icons.accessibility_new_outlined,
+                    activeIcon: Icons.accessibility_new_rounded,
+                    label: 'Anatomy',
+                    isNarrow: isNarrow,
+                    isDark: isDark,
+                  ),
+                  _buildDockItem(
+                    index: 4,
+                    icon: Icons.view_timeline_outlined,
+                    activeIcon: Icons.view_timeline_rounded,
+                    label: 'Protocol',
+                    isNarrow: isNarrow,
+                    isDark: isDark,
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -229,21 +266,19 @@ class _MainShellState extends State<MainShell> {
     required IconData icon,
     required IconData activeIcon,
     required String label,
+    required bool isNarrow,
+    required bool isDark,
   }) {
     final isSelected = _currentTabIndex == index;
-    final isDark = KineticTheme.isDarkMode;
 
     return GestureDetector(
-      onTap: () {
-        setState(() => _currentTabIndex = index);
-        DatabaseService.notifyDataChanged();
-      },
+      onTap: () => _onSelectTab(index),
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(
-          horizontal: isSelected ? 12 : 8,
-          vertical: 8,
+          horizontal: isSelected ? (isNarrow ? 9 : 12) : (isNarrow ? 6 : 8),
+          vertical: isNarrow ? 6 : 8,
         ),
         decoration: BoxDecoration(
           color: isSelected ? KineticTheme.accentFlame : Colors.transparent,
@@ -254,18 +289,18 @@ class _MainShellState extends State<MainShell> {
           children: [
             Icon(
               isSelected ? activeIcon : icon,
-              size: 19,
+              size: isNarrow ? 17 : 19,
               color: isSelected
                   ? Colors.white
                   : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
             ),
             if (isSelected) ...[
-              const SizedBox(width: 6),
+              SizedBox(width: isNarrow ? 4 : 6),
               Text(
                 label.toUpperCase(),
-                style: const TextStyle(
+                style: TextStyle(
                   color: Colors.white,
-                  fontSize: 10,
+                  fontSize: isNarrow ? 9 : 10,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 0.5,
                   fontFamily: 'monospace',
