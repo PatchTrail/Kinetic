@@ -258,6 +258,12 @@ class _RoutineBuilderScreenState extends State<RoutineBuilderScreen> {
       );
       return;
     }
+    if (_subtitleController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter an objective / subtitle')),
+      );
+      return;
+    }
     if (_selectedDays.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select at least one day of the week')),

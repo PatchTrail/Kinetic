@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/food_entry.dart';
@@ -115,9 +116,10 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
               });
             }
 
+            final bottomInset = MediaQuery.of(context).padding.bottom;
             return Padding(
               padding: EdgeInsets.only(
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+                bottom: MediaQuery.of(context).viewInsets.bottom + math.max(20.0, bottomInset + 14.0),
                 left: 20,
                 right: 20,
                 top: 20,
@@ -131,16 +133,20 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text(
-                          'VERIFY & LOG NUTRITION',
-                          style: TextStyle(
-                            color: AppTheme.accentOrange,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 1.5,
-                            fontFamily: 'monospace',
+                        Flexible(
+                          child: const Text(
+                            'VERIFY & LOG NUTRITION',
+                            style: TextStyle(
+                              color: AppTheme.accentOrange,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 1.5,
+                              fontFamily: 'monospace',
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
@@ -829,7 +835,7 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
                     );
                   }),
 
-                const SizedBox(height: 30),
+                SizedBox(height: math.max(120.0, 96.0 + MediaQuery.of(context).padding.bottom)),
               ],
             ),
     );

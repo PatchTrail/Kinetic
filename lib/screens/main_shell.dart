@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/database_service.dart';
@@ -149,12 +150,18 @@ class _MainShellState extends State<MainShell> {
                     ),
 
                     // Floating Music Capsule (Dynamic pop-in when media plays)
-                    Align(
-                      alignment: Alignment.bottomCenter,
-                      child: Padding(
-                        padding: const EdgeInsets.only(bottom: 84),
-                        child: FloatingMusicCapsule(key: ValueKey('capsule_$themeKey')),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final bottomInset = MediaQuery.of(context).padding.bottom;
+                        final capsuleBottom = math.max(bottomInset + 8.0, 16.0) + 62.0;
+                        return Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Padding(
+                            padding: EdgeInsets.only(bottom: capsuleBottom),
+                            child: FloatingMusicCapsule(key: ValueKey('capsule_$themeKey')),
+                          ),
+                        );
+                      },
                     ),
 
                     // Floating Island Bottom Navigation Dock
@@ -176,11 +183,13 @@ class _MainShellState extends State<MainShell> {
     final isDark = KineticTheme.isDarkMode;
     final screenWidth = MediaQuery.of(context).size.width;
     final isNarrow = screenWidth < 380;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+    final dockBottomMargin = math.max(bottomInset + 8.0, 16.0);
 
     return Container(
       key: ValueKey('dock_${isDark ? "dark" : "light"}'),
       margin: EdgeInsets.only(
-        bottom: 20,
+        bottom: dockBottomMargin,
         left: isNarrow ? 8 : 12,
         right: isNarrow ? 8 : 12,
       ),
