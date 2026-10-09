@@ -4,7 +4,7 @@ import '../services/media_service.dart';
 import '../theme/app_theme.dart';
 
 class FloatingMusicCapsule extends StatefulWidget {
-  const FloatingMusicCapsule({super.key});
+  const FloatingMusicCapsule({Key? key}) : super(key: key);
 
   @override
   State<FloatingMusicCapsule> createState() => _FloatingMusicCapsuleState();
@@ -24,9 +24,6 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
   @override
   void initState() {
     super.initState();
-
-    // Listen to theme mode changes to dynamically update colors
-    KineticTheme.themeModeNotifier.addListener(_handleThemeChanged);
 
     // 1. Pop-in spring animation controller
     _popController = AnimationController(
@@ -94,12 +91,6 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
     MediaService.instance.currentTrackNotifier.addListener(_handleTrackChanged);
   }
 
-  void _handleThemeChanged() {
-    if (mounted) {
-      setState(() {});
-    }
-  }
-
   void _handleTrackChanged() {
     final track = MediaService.instance.currentTrackNotifier.value;
     if (track != null) {
@@ -147,7 +138,6 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
 
   @override
   void dispose() {
-    KineticTheme.themeModeNotifier.removeListener(_handleThemeChanged);
     MediaService.instance.currentTrackNotifier.removeListener(_handleTrackChanged);
     _popController.dispose();
     _discController.dispose();
@@ -157,7 +147,7 @@ class _FloatingMusicCapsuleState extends State<FloatingMusicCapsule>
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: Listenable.merge([_popController, KineticTheme.themeModeNotifier]),
+      animation: _popController,
       builder: (context, _) {
         if (_displayedTrack == null && _popController.isDismissed) {
           return const SizedBox.shrink();
