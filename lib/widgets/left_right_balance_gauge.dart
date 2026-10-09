@@ -26,82 +26,89 @@ class LeftRightBalanceGauge extends StatelessWidget {
         backgroundColor: KineticTheme.bgSurface,
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Tier 1: Centered Title Badge / Label
+          Center(
+            child: Text(
+              muscleName.toUpperCase(),
+              style: TextStyle(
+                color: KineticTheme.textSecondary,
+                fontSize: 10.5,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.0,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // Tier 2: Arc Gauges & Center Balance Metric Row
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Left Circular Arc Score
               _buildArcScore(leftScore, isLeft: true),
-              // Center Balance Slider & Label
+              const SizedBox(width: 12),
+
+              // Center Balance Slider Track
               Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: Column(
-                    children: [
-                      Text(
-                        muscleName.toUpperCase(),
-                        style: TextStyle(
-                          color: KineticTheme.textSecondary,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 1.0,
-                        ),
+                child: Row(
+                  children: [
+                    Text(
+                      'L',
+                      style: TextStyle(
+                        color: KineticTheme.textTertiary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
                       ),
-                      const SizedBox(height: 8),
-                      Row(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            'L',
-                            style: TextStyle(
-                              color: KineticTheme.textTertiary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                          Container(
+                            height: 3,
+                            decoration: BoxDecoration(
+                              color: KineticTheme.borderMedium,
+                              borderRadius: BorderRadius.circular(1.5),
                             ),
                           ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                Container(
-                                  height: 2,
-                                  color: KineticTheme.borderMedium,
-                                ),
-                                Align(
-                                  alignment: Alignment((ratio - 0.5) * 2.0, 0),
-                                  child: Container(
-                                    width: 14,
-                                    height: 8,
-                                    decoration: BoxDecoration(
-                                      color: KineticTheme.accentFlame,
-                                      borderRadius: BorderRadius.circular(4),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: KineticTheme.accentFlame.withOpacity(0.5),
-                                          blurRadius: 6,
-                                        ),
-                                      ],
-                                    ),
+                          Align(
+                            alignment: Alignment((ratio - 0.5) * 2.0, 0),
+                            child: Container(
+                              width: 14,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: KineticTheme.accentFlame,
+                                borderRadius: BorderRadius.circular(4),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: KineticTheme.accentFlame.withValues(alpha: 0.5),
+                                    blurRadius: 6,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'R',
-                            style: TextStyle(
-                              color: KineticTheme.textTertiary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'R',
+                      style: TextStyle(
+                        color: KineticTheme.textTertiary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
+              const SizedBox(width: 12),
+
               // Right Circular Arc Score
               _buildArcScore(rightScore, isLeft: false),
             ],

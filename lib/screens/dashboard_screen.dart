@@ -927,21 +927,81 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 12),
           Divider(color: KineticTheme.borderFaint, height: 1),
           const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildProfileStatMini('AGE', '$age', 'YRS'),
-              _buildProfileStatMini('WEIGHT', _currentBodyweight.toStringAsFixed(1), 'KG'),
-              _buildProfileStatMini('HEIGHT', height, 'CM'),
-              _buildProfileStatMini('TARGET', '$targetKcal', 'KCAL'),
-            ],
+          Builder(
+            builder: (ctx) {
+              final screenWidth = MediaQuery.of(ctx).size.width;
+              final textScale = MediaQuery.of(ctx).textScaler.scale(1.0);
+              final shouldStackUnits = screenWidth < 380 || textScale > 1.15;
+
+              return MediaQuery(
+                data: MediaQuery.of(ctx).copyWith(
+                  textScaler: MediaQuery.of(ctx).textScaler.clamp(maxScaleFactor: 1.18),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildProfileStatMini('AGE', '$age', 'YRS', stackUnit: shouldStackUnits),
+                    _buildProfileStatMini('WEIGHT', _currentBodyweight.toStringAsFixed(1), 'KG', stackUnit: shouldStackUnits),
+                    _buildProfileStatMini('HEIGHT', height, 'CM', stackUnit: shouldStackUnits),
+                    _buildProfileStatMini('TARGET', '$targetKcal', 'KCAL', stackUnit: shouldStackUnits),
+                  ],
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProfileStatMini(String label, String value, String unit) {
+  Widget _buildProfileStatMini(String label, String value, String unit, {bool stackUnit = false}) {
+    if (stackUnit) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: KineticTheme.textTertiary,
+              fontSize: 8,
+              fontWeight: FontWeight.w700,
+              fontFamily: 'monospace',
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              value,
+              style: TextStyle(
+                color: KineticTheme.textPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w900,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+          const SizedBox(height: 2),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+            decoration: BoxDecoration(
+              color: KineticTheme.bgSurfaceElevated,
+              borderRadius: BorderRadius.circular(3),
+              border: Border.all(color: KineticTheme.borderFaint, width: 0.5),
+            ),
+            child: Text(
+              unit,
+              style: TextStyle(
+                color: KineticTheme.textSecondary,
+                fontSize: 7.5,
+                fontWeight: FontWeight.w800,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ),
+        ],
+      );
+    }
     return Column(
       children: [
         Text(
@@ -958,13 +1018,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: KineticTheme.textPrimary,
-                fontSize: 12,
-                fontWeight: FontWeight.w900,
-                fontFamily: 'monospace',
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                value,
+                style: TextStyle(
+                  color: KineticTheme.textPrimary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  fontFamily: 'monospace',
+                ),
               ),
             ),
             const SizedBox(width: 2),
@@ -1425,204 +1488,215 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final weightStr = _currentBodyweight > 0 ? _currentBodyweight.toStringAsFixed(1) : '--';
     final weightSubtitle = _currentBodyweight > 0 ? 'Logged weight · Tap to update' : 'No entries · Tap to log';
 
+    final Widget leftCard = GestureDetector(
+      onTap: () {
+        if (_todayWorkout != null) {
+          _startWorkout(_todayWorkout);
+        } else if (_customRoutines.isNotEmpty) {
+          final plan = _customRoutines.first;
+          DatabaseService.instance.createCustomWorkout(
+            title: plan.title,
+            subtitle: plan.subtitle,
+            exerciseIds: plan.exerciseIds,
+            estimatedMinutes: plan.estimatedMinutes,
+          ).then((w) => _startWorkout(w));
+        } else {
+          _showCreateWorkoutDialog();
+        }
+      },
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 185),
+        padding: const EdgeInsets.all(16),
+        decoration: KineticTheme.cardDecoration(
+          backgroundColor: KineticTheme.bgSurface,
+          border: Border.all(color: KineticTheme.borderFaint),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                RoutineNumberBadge(number: 1, progress: r1Progress, size: 40),
+                IconButton(
+                  icon: Icon(Icons.more_horiz_rounded, color: KineticTheme.textTertiary, size: 18),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: _showCreateWorkoutDialog,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  r1Title,
+                  style: TextStyle(
+                    color: KineticTheme.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.3,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  r1Subtitle,
+                  style: TextStyle(
+                    color: KineticTheme.textTertiary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: KineticTheme.accentFlame.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: KineticTheme.accentFlame.withOpacity(0.4)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.play_arrow_rounded, color: KineticTheme.accentFlame, size: 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'START',
+                        style: TextStyle(
+                          color: KineticTheme.accentFlame,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final Widget rightCard = GestureDetector(
+      onTap: _showLogBodyweightDialog,
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 185),
+        padding: const EdgeInsets.all(16),
+        decoration: KineticTheme.cardDecoration(
+          backgroundColor: KineticTheme.bgSurface,
+          border: Border.all(color: KineticTheme.borderFaint),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: KineticTheme.bgSurfaceElevated,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.monitor_weight_outlined, size: 12, color: KineticTheme.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(
+                        'WEIGHT',
+                        style: TextStyle(color: KineticTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.tune_rounded, color: KineticTheme.textTertiary, size: 18),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: [
+                    Text(
+                      weightStr,
+                      style: TextStyle(
+                        color: KineticTheme.textPrimary,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      'kg',
+                      style: TextStyle(
+                        color: KineticTheme.textSecondary,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Body weight',
+                  style: TextStyle(
+                    color: KineticTheme.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  weightSubtitle,
+                  style: TextStyle(
+                    color: KineticTheme.textTertiary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final textScale = MediaQuery.of(context).textScaler.scale(1.0);
+    final shouldStack = screenWidth < 360 || textScale > 1.18;
+
+    if (shouldStack) {
+      return Column(
+        children: [
+          leftCard,
+          const SizedBox(height: 12),
+          rightCard,
+        ],
+      );
+    }
+
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Left Card: Routine 1
-          Expanded(
-            child: GestureDetector(
-              onTap: () {
-                if (_todayWorkout != null) {
-                  _startWorkout(_todayWorkout);
-                } else if (_customRoutines.isNotEmpty) {
-                  final plan = _customRoutines.first;
-                  DatabaseService.instance.createCustomWorkout(
-                    title: plan.title,
-                    subtitle: plan.subtitle,
-                    exerciseIds: plan.exerciseIds,
-                    estimatedMinutes: plan.estimatedMinutes,
-                  ).then((w) => _startWorkout(w));
-                } else {
-                  _showCreateWorkoutDialog();
-                }
-              },
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 185),
-                padding: const EdgeInsets.all(16),
-                decoration: KineticTheme.cardDecoration(
-                  backgroundColor: KineticTheme.bgSurface,
-                  border: Border.all(color: KineticTheme.borderFaint),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        RoutineNumberBadge(number: 1, progress: r1Progress, size: 40),
-                        IconButton(
-                          icon: Icon(Icons.more_horiz_rounded, color: KineticTheme.textTertiary, size: 18),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                          onPressed: _showCreateWorkoutDialog,
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r1Title,
-                          style: TextStyle(
-                            color: KineticTheme.textPrimary,
-                            fontSize: 17,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: -0.3,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 3),
-                        Text(
-                          r1Subtitle,
-                          style: TextStyle(
-                            color: KineticTheme.textTertiary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 10),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: KineticTheme.accentFlame.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(6),
-                            border: Border.all(color: KineticTheme.accentFlame.withOpacity(0.4)),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.play_arrow_rounded, color: KineticTheme.accentFlame, size: 14),
-                              SizedBox(width: 4),
-                              Text(
-                                'START',
-                                style: TextStyle(
-                                  color: KineticTheme.accentFlame,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: leftCard),
           const SizedBox(width: 12),
-
-          // Right Card: Body weight
-          Expanded(
-            child: GestureDetector(
-              onTap: _showLogBodyweightDialog,
-              child: Container(
-                constraints: const BoxConstraints(minHeight: 185),
-                padding: const EdgeInsets.all(16),
-                decoration: KineticTheme.cardDecoration(
-                  backgroundColor: KineticTheme.bgSurface,
-                  border: Border.all(color: KineticTheme.borderFaint),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: KineticTheme.bgSurfaceElevated,
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.monitor_weight_outlined, size: 12, color: KineticTheme.textSecondary),
-                              const SizedBox(width: 4),
-                              Text(
-                                'WEIGHT',
-                                style: TextStyle(color: KineticTheme.textSecondary, fontSize: 9, fontWeight: FontWeight.bold),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(Icons.tune_rounded, color: KineticTheme.textTertiary, size: 18),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.baseline,
-                          textBaseline: TextBaseline.alphabetic,
-                          children: [
-                            Text(
-                              weightStr,
-                              style: TextStyle(
-                                color: KineticTheme.textPrimary,
-                                fontSize: 28,
-                                fontWeight: FontWeight.w900,
-                                fontFamily: 'monospace',
-                              ),
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              'kg',
-                              style: TextStyle(
-                                color: KineticTheme.textSecondary,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Body weight',
-                          style: TextStyle(
-                            color: KineticTheme.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          weightSubtitle,
-                          style: TextStyle(
-                            color: KineticTheme.textTertiary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
+          Expanded(child: rightCard),
         ],
       ),
     );

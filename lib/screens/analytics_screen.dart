@@ -20,6 +20,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   MuscleGroup? _selectedMuscle;
   String _exportStatusMessage = '';
   bool _isExporting = false;
+  bool _showDualViewHint = false;
 
   Map<MuscleGroup, double> _muscleFatigueMap = {};
   Map<String, double> _muscleVolumeMap = {
@@ -37,6 +38,20 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
     super.initState();
     DatabaseService.dataChangeNotifier.addListener(_loadTelemetry);
     _loadTelemetry();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkDualViewHint();
+    });
+  }
+
+  Future<void> _checkDualViewHint() async {
+    final seen = await DatabaseService.instance.getSetting('anatomy_dual_view_hint_seen');
+    if (seen != 'true' && mounted) {
+      final width = MediaQuery.of(context).size.width;
+      final textScale = MediaQuery.of(context).textScaler.scale(1.0);
+      if (width >= 380 && textScale <= 1.18) {
+        setState(() => _showDualViewHint = true);
+      }
+    }
   }
 
   @override
@@ -233,7 +248,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
-                  color: KineticTheme.accentFlame.withOpacity(0.15),
+                  color: KineticTheme.accentFlame.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: const Text(
@@ -247,10 +262,51 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               ),
             ],
           ),
+
+          // Unobtrusive discovery tip for wide-screen users
+          if (_showDualViewHint) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: KineticTheme.accentFlame.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: KineticTheme.accentFlame.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, size: 14, color: KineticTheme.accentFlame),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Tip: Wide screen detected. Use the SINGLE / DUAL toggle above to view anterior & posterior simultaneously.',
+                      style: TextStyle(
+                        color: KineticTheme.textSecondary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      setState(() => _showDualViewHint = false);
+                      DatabaseService.instance.setSetting('anatomy_dual_view_hint_seen', 'true');
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(6),
+                      child: Icon(Icons.close, size: 14, color: KineticTheme.textTertiary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 12),
           AnatomicalBodyMap(
             activationLevels: _muscleFatigueMap,
-            showBothViews: true,
+            showBothViews: false,
             height: 300,
             selectedMuscle: _selectedMuscle,
             onMuscleSelected: (muscle) {
@@ -258,19 +314,73 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             },
           ),
           const SizedBox(height: 10),
-          Center(
-            child: Text(
-              _selectedMuscle != null
-                  ? 'SELECTED: ${_selectedMuscle!.displayName.toUpperCase()} (${((_muscleFatigueMap[_selectedMuscle] ?? 0.5) * 100).toInt()}% STRAIN)'
-                  : 'TAP ANY REGION TO INSPECT STRAIN & RECOVERY',
-              style: const TextStyle(
-                color: KineticTheme.accentFlame,
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
+          if (_selectedMuscle != null)
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: KineticTheme.bgSurfaceElevated,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: KineticTheme.borderMedium, width: 0.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: KineticTheme.accentFlame,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _selectedMuscle!.displayName.toUpperCase(),
+                      style: TextStyle(
+                        color: KineticTheme.textPrimary,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: KineticTheme.accentFlame.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(
+                          color: KineticTheme.accentFlame.withValues(alpha: 0.35),
+                          width: 0.6,
+                        ),
+                      ),
+                      child: Text(
+                        '${((_muscleFatigueMap[_selectedMuscle] ?? 0.5) * 100).toInt()}% STRAIN',
+                        style: const TextStyle(
+                          color: KineticTheme.accentFlame,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w800,
+                          fontFamily: 'monospace',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else
+            Center(
+              child: Text(
+                'TAP ANY REGION TO INSPECT STRAIN & RECOVERY',
+                style: TextStyle(
+                  color: KineticTheme.textTertiary,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
               ),
             ),
-          ),
         ],
       ),
     );

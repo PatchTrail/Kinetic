@@ -187,7 +187,14 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
           ),
           const SizedBox(height: 14),
 
-          // Weekday Labels Row
+          // Month Grid & Day Header with Clamped Text Scaling
+          MediaQuery(
+            data: MediaQuery.of(context).copyWith(
+              textScaler: MediaQuery.of(context).textScaler.clamp(maxScaleFactor: 1.15),
+            ),
+            child: Column(
+              children: [
+                // Weekday Labels Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: ['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day) {
@@ -317,6 +324,9 @@ class _CalendarScreenState extends State<CalendarScreen> with SingleTickerProvid
                 },
               );
             },
+                ),
+              ],
+            ),
           ),
         ],
       ),

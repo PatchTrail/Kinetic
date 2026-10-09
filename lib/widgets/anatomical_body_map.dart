@@ -30,6 +30,7 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   bool _showingFront = true;
+  bool _dualView = false;
   late String _currentGender;
 
   @override
@@ -46,6 +47,7 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
     if (widget.gender == null) {
       _loadProfileGender();
     }
+    _loadDualViewPreference();
   }
 
   Future<void> _loadProfileGender() async {
@@ -54,6 +56,13 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
       setState(() {
         _currentGender = profile.gender;
       });
+    }
+  }
+
+  Future<void> _loadDualViewPreference() async {
+    final mode = await DatabaseService.instance.getSetting('anatomy_view_mode');
+    if (mode == 'dual' && mounted) {
+      setState(() => _dualView = true);
     }
   }
 
@@ -88,6 +97,11 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final textScale = MediaQuery.of(context).textScaler.scale(1.0);
+    final canSupportDual = screenWidth >= 380 && textScale <= 1.18;
+    final effectiveDualView = (widget.showBothViews || _dualView) && canSupportDual;
+
     return Container(
       height: widget.height,
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
@@ -98,12 +112,12 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
       child: Column(
         children: [
           // Top Control Bar: View Title + Gender & View Segmented Toggles
-          _buildTopControlBar(),
+          _buildTopControlBar(canSupportDual: canSupportDual),
           const SizedBox(height: 6),
 
           // Main Interactive Visualizer View
           Expanded(
-            child: widget.showBothViews ? _buildSideBySideView() : _buildSingleView(),
+            child: effectiveDualView ? _buildSideBySideView() : _buildSingleView(),
           ),
 
           // Selected Muscle HUD Indicator Bar
@@ -114,7 +128,7 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
     );
   }
 
-  Widget _buildTopControlBar() {
+  Widget _buildTopControlBar({required bool canSupportDual}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -148,34 +162,72 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
             ],
           ),
         ),
-        const SizedBox(width: 4),
+        const SizedBox(width: 6),
 
-        // Single View Front/Back Switch
-        if (!widget.showBothViews)
-          Container(
-            height: 24,
-            decoration: BoxDecoration(
-              color: KineticTheme.bgSurfaceElevated,
-              borderRadius: BorderRadius.circular(4),
-              border: Border.all(color: KineticTheme.borderMedium, width: 0.8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildMiniSegment(
-                  label: 'FRONT',
-                  isActive: _showingFront,
-                  onTap: () => setState(() => _showingFront = true),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Dual/Single View Switcher (Only on capable wide screens)
+            if (canSupportDual) ...[
+              Container(
+                height: 24,
+                decoration: BoxDecoration(
+                  color: KineticTheme.bgSurfaceElevated,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: KineticTheme.borderMedium, width: 0.8),
                 ),
-                _buildMiniSegment(
-                  label: 'BACK',
-                  isActive: !_showingFront,
-                  onTap: () => setState(() => _showingFront = false),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildMiniSegment(
+                      label: 'SINGLE',
+                      isActive: !_dualView,
+                      onTap: () {
+                        setState(() => _dualView = false);
+                        DatabaseService.instance.setSetting('anatomy_view_mode', 'single');
+                      },
+                    ),
+                    _buildMiniSegment(
+                      label: 'DUAL',
+                      isActive: _dualView,
+                      onTap: () {
+                        setState(() => _dualView = true);
+                        DatabaseService.instance.setSetting('anatomy_view_mode', 'dual');
+                      },
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
+              ),
+              const SizedBox(width: 6),
+            ],
 
+            // Single View Front/Back Switch
+            if (!_dualView || !canSupportDual)
+              Container(
+                height: 24,
+                decoration: BoxDecoration(
+                  color: KineticTheme.bgSurfaceElevated,
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: KineticTheme.borderMedium, width: 0.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildMiniSegment(
+                      label: 'FRONT',
+                      isActive: _showingFront,
+                      onTap: () => setState(() => _showingFront = true),
+                    ),
+                    _buildMiniSegment(
+                      label: 'BACK',
+                      isActive: !_showingFront,
+                      onTap: () => setState(() => _showingFront = false),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
       ],
     );
   }
@@ -314,15 +366,18 @@ class _AnatomicalBodyMapState extends State<AnatomicalBodyMap> with SingleTicker
                         activationMap: widget.activationLevels,
                         selectedMuscle: widget.selectedMuscle,
                         pulseValue: _pulseAnimation.value,
+                        isDark: KineticTheme.isDarkMode,
                       ),
                     );
                   },
                 ),
 
                 // 3. Interactive Tap Region Target Detection
-                GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTapUp: (details) => _handleCanvasTap(details, isFront),
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapUp: (details) => _handleCanvasTap(details, isFront),
+                  ),
                 ),
               ],
             ),
@@ -457,12 +512,14 @@ class _ThermoHeatMapPainter extends CustomPainter {
   final Map<MuscleGroup, double> activationMap;
   final MuscleGroup? selectedMuscle;
   final double pulseValue;
+  final bool isDark;
 
   _ThermoHeatMapPainter({
     required this.isFront,
     required this.activationMap,
     required this.selectedMuscle,
     required this.pulseValue,
+    this.isDark = true,
   });
 
   static List<_MuscleDefinition> getMuscleDefinitions(bool isFront) {
@@ -566,14 +623,26 @@ class _ThermoHeatMapPainter extends CustomPainter {
   }
 
   Color _getHeatColor(double activation) {
-    if (activation >= 0.75) {
-      return const Color(0xFFFF2A00); // Intense Thermo Flame
-    } else if (activation >= 0.45) {
-      return const Color(0xFFFF8500); // Amber Energy
-    } else if (activation >= 0.20) {
-      return const Color(0xFFFFB700); // Warm Gold
+    if (isDark) {
+      if (activation >= 0.75) {
+        return const Color(0xFFFF2A00); // Intense Thermo Flame
+      } else if (activation >= 0.45) {
+        return const Color(0xFFFF8500); // Amber Energy
+      } else if (activation >= 0.20) {
+        return const Color(0xFFFFB700); // Warm Gold
+      } else {
+        return const Color(0xFF00E5FF); // Resting Cyan
+      }
     } else {
-      return const Color(0xFF00E5FF); // Resting Cyan
+      if (activation >= 0.75) {
+        return const Color(0xFFD32F2F); // Saturated Crimson
+      } else if (activation >= 0.45) {
+        return const Color(0xFFE65100); // Saturated Deep Amber
+      } else if (activation >= 0.20) {
+        return const Color(0xFFF57C00); // Warm Amber
+      } else {
+        return const Color(0xFF00838F); // Rich Teal
+      }
     }
   }
 
@@ -597,28 +666,38 @@ class _ThermoHeatMapPainter extends CustomPainter {
         // Scale for elliptical shape
         canvas.scale(node.radiusX, node.radiusY);
 
+        // 4-stop radial gradient for feathered thermo bloom
         final radialPaint = Paint()
           ..shader = ui.Gradient.radial(
             Offset.zero,
             1.0,
             [
-              baseColor.withValues(alpha: effectiveIntensity * 0.72),
-              baseColor.withValues(alpha: effectiveIntensity * 0.38),
+              baseColor.withValues(alpha: effectiveIntensity * (isDark ? 0.75 : 0.85)),
+              baseColor.withValues(alpha: effectiveIntensity * (isDark ? 0.45 : 0.55)),
+              baseColor.withValues(alpha: effectiveIntensity * (isDark ? 0.18 : 0.22)),
               baseColor.withValues(alpha: 0.0),
             ],
-            [0.0, 0.55, 1.0],
+            [0.0, 0.40, 0.75, 1.0],
           )
-          ..blendMode = BlendMode.screen;
+          ..blendMode = isDark ? BlendMode.screen : BlendMode.srcOver;
 
         canvas.drawCircle(Offset.zero, 1.0, radialPaint);
 
         if (isSelected) {
-          // Luminous aura contour
-          final borderPaint = Paint()
-            ..color = Colors.white.withValues(alpha: 0.65 * pulseValue)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.08 / node.radiusX;
-          canvas.drawCircle(Offset.zero, 0.92, borderPaint);
+          // Luminous aura corona: soft glowing ring rather than a sharp white stroke line
+          final auraPaint = Paint()
+            ..shader = ui.Gradient.radial(
+              Offset.zero,
+              1.12,
+              [
+                (isDark ? Colors.white : baseColor).withValues(alpha: 0.55 * pulseValue),
+                baseColor.withValues(alpha: 0.25 * pulseValue),
+                Colors.transparent,
+              ],
+              [0.82, 0.96, 1.12],
+            )
+            ..blendMode = isDark ? BlendMode.screen : BlendMode.srcOver;
+          canvas.drawCircle(Offset.zero, 1.12, auraPaint);
         }
 
         canvas.restore();
@@ -631,6 +710,7 @@ class _ThermoHeatMapPainter extends CustomPainter {
     return oldDelegate.isFront != isFront ||
         oldDelegate.pulseValue != pulseValue ||
         oldDelegate.selectedMuscle != selectedMuscle ||
-        oldDelegate.activationMap != activationMap;
+        oldDelegate.activationMap != activationMap ||
+        oldDelegate.isDark != isDark;
   }
 }

@@ -465,29 +465,33 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
                                 ),
                               ),
                               const SizedBox(height: 4),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.baseline,
-                                textBaseline: TextBaseline.alphabetic,
-                                children: [
-                                  Text(
-                                    '$_consumedCalories',
-                                    style: TextStyle(
-                                      color: KineticTheme.textPrimary,
-                                      fontSize: 28,
-                                      fontWeight: FontWeight.w900,
-                                      fontFamily: 'monospace',
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                                  textBaseline: TextBaseline.alphabetic,
+                                  children: [
+                                    Text(
+                                      '$_consumedCalories',
+                                      style: TextStyle(
+                                        color: KineticTheme.textPrimary,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w900,
+                                        fontFamily: 'monospace',
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    ' / $_targetCalories KCAL',
-                                    style: TextStyle(
-                                      color: AppTheme.textMuted,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                      fontFamily: 'monospace',
+                                    Text(
+                                      ' / $_targetCalories KCAL',
+                                      style: TextStyle(
+                                        color: AppTheme.textMuted,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w600,
+                                        fontFamily: 'monospace',
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -877,29 +881,33 @@ class _FoodTrackerScreenState extends State<FoodTrackerScreen> {
             ],
           ),
           const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Text(
-                current.toStringAsFixed(0),
-                style: TextStyle(
-                  color: KineticTheme.textPrimary,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  fontFamily: 'monospace',
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(
+                  current.toStringAsFixed(0),
+                  style: TextStyle(
+                    color: KineticTheme.textPrimary,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: 'monospace',
+                  ),
                 ),
-              ),
-              Text(
-                ' / ${target.toStringAsFixed(0)}$unit',
-                style: TextStyle(
-                  color: AppTheme.textMuted,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                  fontFamily: 'monospace',
+                Text(
+                  ' / ${target.toStringAsFixed(0)}$unit',
+                  style: TextStyle(
+                    color: AppTheme.textMuted,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w600,
+                    fontFamily: 'monospace',
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(height: 6),
           BreathingProgressBar(
